@@ -3,3 +3,4 @@ exports/*
 !exports/.gitkeep
 __pycache__/
 .DS_Store
+config/profile.backup.json

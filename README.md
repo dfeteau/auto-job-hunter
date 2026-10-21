@@ -29,9 +29,19 @@ Keep your copy **private**. Once you add your tracker, the config folder holds y
 
 Open Terminal in the project folder for every command below. On Windows, type `python` wherever you see `python3`.
 
-### Step 2. Set your criteria in `config/profile.json`
+### Step 2. Set your criteria
 
-This one file holds all of your settings. Every value in it is an example, so go through each section.
+Run the setup wizard:
+
+```bash
+python3 setup_wizard.py
+```
+
+It asks about 15 questions (job titles, words to exclude, industries and companies to avoid, your home city and nearby cities, which kinds of remote, hybrid and onsite jobs to keep, your lowest and target salary, your top skills, and how strict the shortlist should be), shows a summary, and writes `config/profile.json`. Press Enter to accept a suggestion. Run it again any time; your previous settings are saved to `config/profile.backup.json`.
+
+Industry shortcuts you can type: healthcare, pharma, defense, government, gambling, crypto, insurance. Each expands to a set of title keywords.
+
+**Prefer to edit by hand?** Everything the wizard writes lives in `config/profile.json`:
 
 | Section | Setting | What it means |
 |---|---|---|
@@ -148,6 +158,7 @@ tools/
   export_shortlist.py   Shortlist as a tracker-ready CSV
 templates/              Blank tracker (.xlsx and .csv)
 docs/RESUME_MATCH.md    How to score the shortlist against your resume with Claude
+setup_wizard.py         Asks your criteria and writes config/profile.json
 init_db.py              Creates data/jobs.db
 data/jobs.db            Your collected jobs (local only, never uploaded)
 ```
@@ -171,3 +182,7 @@ data/jobs.db            Your collected jobs (local only, never uploaded)
 | A wrong company's jobs appear | Remove that company's `ats` and `token` in `config/companies.json`, or add it to `excluded_companies`. |
 | Too few jobs | Add companies, loosen `excluded_title_words`, or set more `accept` options to `true`. |
 | Too many jobs | Raise `gate_min` or `floor_high_end`, or narrow `titles`. |
+
+## License
+
+MIT. Free to use, change and share. See [LICENSE](LICENSE).
