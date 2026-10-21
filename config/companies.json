@@ -1,0 +1,4 @@
+{
+ "_readme": "Companies to search. Fill it with tools/import_tracker.py or tools/add_companies.py, then run collectors/find_boards.py. Do not edit ats/token by hand unless you know the board name.",
+ "companies": []
+}

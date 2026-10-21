@@ -1,0 +1,5 @@
+data/*.db
+exports/*
+!exports/.gitkeep
+__pycache__/
+.DS_Store

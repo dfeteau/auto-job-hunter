@@ -1,0 +1,13 @@
+{
+ "_readme": "Tells tools/import_tracker.py which columns in YOUR tracker hold each field. Values are header names as they appear in your file. The defaults match templates/job_tracker_template.xlsx.",
+ "sheet": null,
+ "columns": {
+  "company": "Company",
+  "title": "Job Title",
+  "status": "Status",
+  "link": "Link"
+ },
+ "skip_statuses": [
+  "Empty"
+ ]
+}

@@ -1,0 +1,4 @@
+{
+ "_readme": "Companies whose careers site runs on Workday. Value: the Workday URL (see collectors/find_workday.py for how to find it) or null to let the finder guess. Example entry: \"Acme Corp\": \"https://acme.wd5.myworkdayjobs.com/Acme_Careers\"",
+ "seeds": {}
+}

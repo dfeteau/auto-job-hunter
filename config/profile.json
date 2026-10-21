@@ -1,0 +1,64 @@
+{
+  "_readme": "Your personal search settings. Every value here is an example: replace it with your own. See README.md, step 2.",
+
+  "search": {
+    "titles": [
+      "Senior Data Analyst",
+      "Data Analyst",
+      "Business Intelligence Analyst",
+      "Analytics Engineer"
+    ],
+    "excluded_title_words": ["Junior", "Intern", "Entry Level", "Manager"],
+    "excluded_industry_words": [],
+    "excluded_companies": []
+  },
+
+  "location": {
+    "country": "US",
+    "home_metro_name": "Denver",
+    "home_metro_patterns": ["denver", "colorado", ", co\\b", "boulder", "lakewood"],
+    "accept": {
+      "remote": true,
+      "hybrid_home": true,
+      "onsite_home": false,
+      "hybrid_other": false,
+      "onsite_other": false
+    },
+    "home_min_salary": null
+  },
+
+  "salary": {
+    "floor_high_end": 90000,
+    "tiers_by_min": [
+      {"min": 130000, "points": 4},
+      {"min": 120000, "points": 3},
+      {"min": 110000, "points": 2}
+    ],
+    "unknown_points": 0
+  },
+
+  "scoring": {
+    "location_points": {
+      "remote": 4,
+      "hybrid_home": 3,
+      "onsite_home": 2,
+      "hybrid_other": 1,
+      "onsite_other": 1
+    },
+    "gate_min": 50,
+    "title_rank": {
+      "Senior Data Analyst": 30,
+      "Data Analyst": 25,
+      "Business Intelligence Analyst": 15,
+      "Analytics Engineer": 10
+    },
+    "skill_points": {
+      "sql": 10,
+      "python": 10,
+      "tableau": 5,
+      "power bi": 5,
+      "dashboard": 5,
+      "data modeling": 5
+    }
+  }
+}
