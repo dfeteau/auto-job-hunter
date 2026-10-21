@@ -16,11 +16,11 @@ PROFILE = load("profile.json")
 
 # ---------- HTTP ----------
 
-def get(url, tries=3):
+def get(url, tries=3, timeout=20):
     req = urllib.request.Request(url, headers=UA)
     for i in range(tries):
         try:
-            with urllib.request.urlopen(req, timeout=20) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
             if e.code == 429: time.sleep(5 * (i + 1)); continue

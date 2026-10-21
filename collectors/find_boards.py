@@ -3,8 +3,8 @@ Usage: python3 collectors/find_boards.py [--limit N] [--dry-run] [--recheck]
 
 For each company it builds several board-name guesses (joined, hyphenated, "and" for "&",
 names in parentheses, shortened names) and tries Greenhouse, SmartRecruiters, Workable,
-Lever and Ashby. Greenhouse, SmartRecruiters and Workable report the company's name, so
-those matches are checked against yours. Lever and Ashby do not, so their matches are
+Lever and Ashby. Greenhouse and SmartRecruiters report the company's name, so those matches
+are checked against yours. Workable matches also need at least one open job. Lever and Ashby do not, so their matches are
 marked "unverified": open one of their job links once to confirm it is the right company.
 Recruiters, staffing firms and aggregators are marked skip and never searched.
 Workday is handled separately by find_workday.py.
@@ -57,18 +57,19 @@ def name_ok(ours, theirs):
 
 def probe(company):
     for v, loose in variants(company):
-        r = get(GH.format(t=v), tries=1); time.sleep(0.1)
+        r = get(GH.format(t=v), tries=1, timeout=8); time.sleep(0.1)
         if isinstance(r, dict) and r.get("name") is not None and name_ok(company, r["name"]): return "greenhouse", v, "name ok"
-        r = get(SR.format(t=v), tries=1); time.sleep(0.1)
+        r = get(SR.format(t=v), tries=1, timeout=8); time.sleep(0.1)
         if isinstance(r, dict) and r.get("totalFound"):
             nm = ((r.get("content") or [{}])[0].get("company") or {}).get("name")
             if name_ok(company, nm): return "smartrecruiters", v, "name ok"
-        r = get(WK.format(t=v), tries=1); time.sleep(0.1)
-        if isinstance(r, dict) and r.get("name") is not None and name_ok(company, r["name"]): return "workable", v, "name ok"
+        r = get(WK.format(t=v), tries=1, timeout=8); time.sleep(0.1)
+        # Workable answers with a name even for boards that don't exist, so require real job postings
+        if isinstance(r, dict) and r.get("jobs") and name_ok(company, r.get("name")): return "workable", v, "has jobs"
         if loose: continue
-        r = get(LEVER.format(t=v), tries=1); time.sleep(0.1)
+        r = get(LEVER.format(t=v), tries=1, timeout=8); time.sleep(0.1)
         if isinstance(r, list) and r: return "lever", v, "unverified"
-        r = get(ASHBY.format(t=v), tries=1); time.sleep(0.1)
+        r = get(ASHBY.format(t=v), tries=1, timeout=8); time.sleep(0.1)
         if isinstance(r, dict) and isinstance(r.get("jobs"), list) and r["jobs"]: return "ashby", v, "unverified"
     return None, None, None
 
