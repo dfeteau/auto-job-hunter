@@ -46,12 +46,15 @@ Industry shortcuts you can type: healthcare, pharma, defense, government, gambli
 | Section | Setting | What it means |
 |---|---|---|
 | `search` | `titles` | Job titles to look for. A job matches if its title *contains* one of these, so "Data Analyst" also matches "Senior Data Analyst, Marketing". |
-| | `excluded_title_words` | Skip titles containing any of these (for example Junior, Intern, Manager). |
+| | `excluded_title_words` | Skip titles containing any of these whole words (for example Junior, Intern, Manager). Whole words only, so "Intern" does not skip "Internal Audit Analyst". |
+| | `excluded_title_exceptions` | Phrases kept even though they contain an excluded word, for example "Senior Associate" when "Associate" is excluded. |
 | | `excluded_industry_words` | Skip titles containing these (for example "clinical", "pharma"). Leave empty to allow all industries. |
+| | `exclude_clearance_required` | `true` skips postings that require a security clearance ("Clearance Required: None" is fine). Set `false` if you hold one. |
 | | `excluded_companies` | Companies never to show. |
 | `location` | `home_metro_name`, `home_metro_patterns` | Your metro area and the words that identify it in a job location (city names, state, `, co\\b` for ", CO"). |
 | | `accept` | Which job types to keep: `remote`, `hybrid_home`, `onsite_home` (in your metro), `hybrid_other`, `onsite_other` (elsewhere). `true` keeps, `false` drops. |
 | | `home_min_salary` | Optional. Minimum salary for hybrid or onsite jobs in your metro (worth the commute). `null` for none. |
+| | (note) | Home-area jobs that don't state remote, hybrid or onsite count as hybrid and are flagged `check if hybrid`. Jobs that say onsite count as onsite. |
 | `salary` | `floor_high_end` | Drop jobs whose posted range tops out below this. Jobs with no salary listed are kept. |
 | | `tiers_by_min` | Salary points by the low end of the range. More points = better fit. |
 | | `unknown_points` | Points when no salary is posted (0 is safest). |
@@ -110,18 +113,32 @@ Companies reported as not found usually use a career site this tool doesn't cove
 ### Step 6. Daily run
 
 ```bash
-python3 collectors/collect.py         # pull new jobs from every known board
-python3 scoring/score.py              # print the ranked shortlist
+python3 run_daily.py
+```
+
+This collects from every known board, scores the results, and saves a report to `reports/report_YYYY-MM-DD.md`
+(set `JOB_REPORT_DIR` to save it somewhere else, such as a folder you share with Claude). The report shows:
+
+- **Summary:** jobs found (titles matching your search), excluded by your criteria, already in your tracker, and the number that qualify for your tracker. The numbers add up, so you can see where every job went.
+- **Excluded, by reason:** for example "Outside the US: 8", "Onsite in home area: 5", "Pay tops out under $90,000: 3".
+- **Qualifying jobs:** Fit Score, link, location, pay and flags.
+- **Excluded jobs (detail):** every excluded job and why, so you can spot a rule that's too strict.
+- **Job descriptions** of the qualifying jobs, ready for Resume Match (step 7).
+
+`python3 run_daily.py --report` rebuilds the report without collecting again. The individual steps still work on their own:
+
+```bash
+python3 collectors/collect.py         # pull new jobs from every known board (add --debug to see every decision)
+python3 scoring/score.py              # print the ranked shortlist (add --all to include jobs below your gate)
 python3 tools/export_shortlist.py     # optional: CSV in your tracker's format, in exports/
 ```
 
-Each shortlist line shows: Fit Score | company | title | location | salary | flags.
+Flags you may see on a job:
 
 - `salary unknown`: no pay listed. Check the posting.
 - `single figure, check`: only one dollar amount was found, so it may not be the salary.
 - `check location`: listed as remote, but the country isn't clear.
-
-Add `--all` to `score.py` to also see jobs below your gate.
+- `check if hybrid`: in your home area, but the posting doesn't say remote, hybrid or onsite. It is scored like a hybrid job.
 
 ### Step 7. Resume Match and tracking
 
@@ -159,6 +176,7 @@ tools/
 templates/              Blank tracker (.xlsx and .csv)
 docs/RESUME_MATCH.md    How to score the shortlist against your resume with Claude
 setup_wizard.py         Asks your criteria and writes config/profile.json
+run_daily.py            One-command daily run and report
 init_db.py              Creates data/jobs.db
 data/jobs.db            Your collected jobs (local only, never uploaded)
 ```
@@ -180,7 +198,7 @@ data/jobs.db            Your collected jobs (local only, never uploaded)
 | `Could not find the 'Company' and 'Job Title' headers` | Update `config/tracker_map.json` with your exact header names. |
 | `no such table: jobs` | Run `python3 init_db.py` first. |
 | A wrong company's jobs appear | Remove that company's `ats` and `token` in `config/companies.json`, or add it to `excluded_companies`. |
-| Too few jobs | Add companies, loosen `excluded_title_words`, or set more `accept` options to `true`. |
+| Too few jobs | Check the report's "Excluded, by reason" table. Add companies, loosen `excluded_title_words`, or set more `accept` options to `true`. `python3 collectors/collect.py --debug` shows every decision. |
 | Too many jobs | Raise `gate_min` or `floor_high_end`, or narrow `titles`. |
 
 ## License

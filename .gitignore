@@ -4,3 +4,6 @@ exports/*
 __pycache__/
 .DS_Store
 config/profile.backup.json
+data/run_stats/
+reports/*
+!reports/.gitkeep

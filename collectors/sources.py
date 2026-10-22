@@ -81,6 +81,8 @@ def workday(url, wanted, search_terms):
                 if p.get("externalPath") and wanted(p.get("title", "")): found[p["externalPath"]] = p
             time.sleep(0.3)
             if len(posts) < 20: break
+    import common
+    if common.DEBUG: print(f"      Workday returned {len(found)} matching titles", flush=True)
     for path, p in found.items():
         info = (get(f"{api}{path}") or {}).get("jobPostingInfo") or {}
         locs = [info.get("location") or p.get("locationsText") or ""] + list(info.get("additionalLocations") or [])
@@ -88,5 +90,6 @@ def workday(url, wanted, search_terms):
         rt = str(info.get("remoteType") or "").lower()
         yield dict(title=info.get("title") or p.get("title", ""), loc="; ".join(l for l in locs if l),
                    url=info.get("externalUrl") or f"https://{host}/{site}{path}", plain=strip_html(info.get("jobDescription")),
-                   wt="remote" if "remote" in rt else "hybrid" if "hybrid" in rt else "", smin=None, smax=None)
+                   wt="remote" if "remote" in rt else "hybrid" if "hybrid" in rt else "onsite" if "site" in rt or "office" in rt else "",
+                   smin=None, smax=None)
         time.sleep(0.3)

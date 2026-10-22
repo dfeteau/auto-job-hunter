@@ -1,6 +1,5 @@
 {
   "_readme": "Your personal search settings. Every value here is an example: replace it with your own. See README.md, step 2.",
-
   "search": {
     "titles": [
       "Senior Data Analyst",
@@ -8,15 +7,34 @@
       "Business Intelligence Analyst",
       "Analytics Engineer"
     ],
-    "excluded_title_words": ["Junior", "Intern", "Entry Level", "Manager"],
+    "excluded_title_words": [
+      "Junior",
+      "Intern",
+      "Entry Level",
+      "Manager"
+    ],
+    "excluded_title_exceptions": [
+      "senior associate",
+      "sr. associate",
+      "sr associate",
+      "associate principal",
+      "associate director",
+      "associate vice president"
+    ],
     "excluded_industry_words": [],
-    "excluded_companies": []
+    "excluded_companies": [],
+    "exclude_clearance_required": true
   },
-
   "location": {
     "country": "US",
     "home_metro_name": "Denver",
-    "home_metro_patterns": ["denver", "colorado", ", co\\b", "boulder", "lakewood"],
+    "home_metro_patterns": [
+      "denver",
+      "colorado",
+      ", co\\b",
+      "boulder",
+      "lakewood"
+    ],
     "accept": {
       "remote": true,
       "hybrid_home": true,
@@ -26,17 +44,24 @@
     },
     "home_min_salary": null
   },
-
   "salary": {
     "floor_high_end": 90000,
     "tiers_by_min": [
-      {"min": 130000, "points": 4},
-      {"min": 120000, "points": 3},
-      {"min": 110000, "points": 2}
+      {
+        "min": 130000,
+        "points": 4
+      },
+      {
+        "min": 120000,
+        "points": 3
+      },
+      {
+        "min": 110000,
+        "points": 2
+      }
     ],
     "unknown_points": 0
   },
-
   "scoring": {
     "location_points": {
       "remote": 4,

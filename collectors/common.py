@@ -1,5 +1,5 @@
 """Shared helpers: settings, HTTP, text cleanup, location and salary parsing, filtering, saving."""
-import json, re, time, html, pathlib, sqlite3, datetime, urllib.request, urllib.error
+import json, re, sys, time, html, pathlib, sqlite3, datetime, collections, urllib.request, urllib.error
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CFG = ROOT / "config"
@@ -83,9 +83,17 @@ US_TOK = re.compile(r"\b(us|usa|u\.s\.|united states|america)\b", re.I)
 US_STATE = re.compile(r",\s*(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|"
                       r"NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b")
 HOME = re.compile("|".join(PROFILE["location"]["home_metro_patterns"]) or r"$^", re.I)
+ONSITE = re.compile(r"\b(on-?site|in[- ]office|in the office|5 days a week|five days a week)\b", re.I)
+CLEARANCE = re.compile(r"clearance\s*required\s*:?\s*(?!none|n/a|no\b)(yes|secret|top|ts|public|active|dod|\w)"
+    r"|\b(active|current|existing|must (?:have|hold|possess)|ability to obtain|able to obtain|eligible (?:for|to obtain))\b[^.]{0,50}"
+    r"\b(secret|ts/sci|top secret|security clearance|public trust)\b", re.I)
+
+def needs_clearance(text):
+    """True if the posting requires a security clearance ("Clearance Required: None" does not count)."""
+    return bool(CLEARANCE.search(text or ""))
 
 def classify(loc, plain="", workplace=""):
-    """Returns remote_us, remote_unknown, us_unspecified, hybrid_home, onsite_home, hybrid_other, onsite_other or non_us.
+    """Returns remote_us, remote_unknown, us_unspecified, hybrid_home, home_unclear, onsite_home, hybrid_other, onsite_other or non_us.
     workplace is the source's own remote/hybrid label when it has one."""
     l = (loc or "").strip(); ll = l.lower(); wt = (workplace or "").lower()
     if NON_US.search(l): return "non_us"
@@ -95,32 +103,56 @@ def classify(loc, plain="", workplace=""):
         return "remote_unknown"
     if re.search(r"any location|anywhere", l, re.I): return "us_unspecified"
     hybrid = "hybrid" in ll or wt == "hybrid" or "hybrid" in (plain or "")[:3000].lower()
-    if HOME.search(l): return "hybrid_home" if hybrid else "onsite_home"
+    if HOME.search(l):
+        if hybrid: return "hybrid_home"
+        if wt in ("onsite", "on-site") or ONSITE.search(l) or ONSITE.search((plain or "")[:3000]): return "onsite_home"
+        return "home_unclear"   # posting doesn't say: treated as hybrid, flagged "check if hybrid"
     return "hybrid_other" if hybrid else "onsite_other"
 
 LOC_GROUP = {"remote_us": "remote", "remote_unknown": "remote", "us_unspecified": "remote",
-             "hybrid_home": "hybrid_home", "onsite_home": "onsite_home",
+             "hybrid_home": "hybrid_home", "home_unclear": "hybrid_home", "onsite_home": "onsite_home",
              "hybrid_other": "hybrid_other", "onsite_other": "onsite_other", "non_us": None}
 
 # ---------- filtering and saving ----------
 
+DEFAULT_TITLE_EXCEPTIONS = ["senior associate", "sr. associate", "sr associate", "associate principal",
+                            "associate director", "associate vice president"]
+LOCATION_REASON = {"non_us": "Outside the US", "onsite_home": "Onsite in home area", "hybrid_home": "Hybrid in home area not accepted",
+                   "home_unclear": "Home area (arrangement not stated) not accepted", "hybrid_other": "Hybrid outside home area",
+                   "onsite_other": "Onsite outside home area", "remote_us": "Remote not accepted",
+                   "remote_unknown": "Remote not accepted", "us_unspecified": "Remote not accepted"}
+DEBUG = "--debug" in sys.argv
+
 class Filter:
-    """Applies the profile's title, industry, company, location and already-tracked rules."""
+    """Applies the profile's title, industry, company, clearance, location and already-tracked rules,
+    and counts what happened to every job for the daily report."""
     def __init__(self):
         s = PROFILE["search"]
         self.titles = [t.lower() for t in s["titles"]]
         self.bad_title = [w.lower() for w in s["excluded_title_words"]]
+        self.exceptions = [e.lower() for e in s.get("excluded_title_exceptions", DEFAULT_TITLE_EXCEPTIONS)]
         words = [re.escape(w) for w in s.get("excluded_industry_words", [])]
         self.industry = re.compile("|".join(words), re.I) if words else None
+        self.no_clearance = s.get("exclude_clearance_required", True)
         self.skip_cos = {norm_co(x) for x in s.get("excluded_companies", [])}
         self.accept = PROFILE["location"]["accept"]
         self.seen = {norm_co(j["company"]) + "|" + norm_title(j["title"]) for j in load("seen.json")["jobs"]}
         self.counts = {"kept": 0, "already_tracked": 0}
+        self.stats = dict(boards=0, found=0, excluded=collections.Counter(), details=[])
+
+    def title_match(self, title):
+        tl = title.lower()
+        return any(t in tl for t in self.titles)
+
+    def title_excluded(self, title):
+        """Whole words only (so "Intern" doesn't catch "Internal"); exception phrases are ignored first."""
+        tl = " ".join(title.lower().split())
+        for e in self.exceptions: tl = tl.replace(e, " ")
+        return any(re.search(r"\b" + re.escape(w) + r"\b", tl) for w in self.bad_title)
 
     def wants_title(self, title):
-        tl = title.lower()
-        return any(t in tl for t in self.titles) and not any(w in tl for w in self.bad_title) \
-            and not (self.industry and self.industry.search(title))
+        """Quick check used by the readers before fetching full details."""
+        return self.title_match(title)
 
     def skip_company(self, c):
         return c.get("skip") or norm_co(c["company"]) in self.skip_cos
@@ -132,22 +164,49 @@ class Filter:
     def tracked(self, company, title):
         return norm_co(company) + "|" + norm_title(title) in self.seen
 
+    def why_not(self, company, title, loc, rt, plain):
+        """Reason a job is excluded by the collection rules, or None."""
+        if self.title_excluded(title): return "Excluded title word"
+        if self.industry and self.industry.search(title): return "Excluded industry word"
+        if not self.location_ok(rt): return LOCATION_REASON.get(rt, "Location not accepted")
+        if self.no_clearance and needs_clearance(plain): return "Security clearance required"
+        return None
+
+    def save_stats(self, source="all"):
+        d = STATS_DIR; d.mkdir(parents=True, exist_ok=True)
+        (d / f"{source}.json").write_text(json.dumps(dict(
+            source=source, date=datetime.date.today().isoformat(), boards=self.stats["boards"],
+            found=self.stats["found"], tracked=self.counts["already_tracked"], kept=self.counts["kept"],
+            excluded=dict(self.stats["excluded"]), details=self.stats["details"]), indent=1))
+
+STATS_DIR = ROOT / "data" / "run_stats"
+
 def connect():
     return sqlite3.connect(DB)
 
 def save_job(con, flt, company, source, job):
     """job: dict(title, loc, url, plain, wt, smin, smax). Returns True if stored."""
     title = " ".join((job.get("title") or "").split())
-    if not job.get("url") or not flt.wants_title(title): return False
+    if not job.get("url") or not flt.title_match(title): return False
+    flt.stats["found"] += 1
     rt = classify(job.get("loc"), job.get("plain"), job.get("wt"))
-    if not flt.location_ok(rt): return False
+    reason = flt.why_not(company, title, job.get("loc"), rt, job.get("plain"))
+    if reason:
+        flt.stats["excluded"][reason] += 1
+        flt.stats["details"].append([reason, company, title, job.get("loc") or ""])
+        if DEBUG: print(f"      - {title} | {(job.get('loc') or '')[:60]} | {reason}", flush=True)
+        return False
     if flt.tracked(company, title):
-        flt.counts["already_tracked"] += 1; return False
+        flt.counts["already_tracked"] += 1
+        if DEBUG: print(f"      = {title} | already in tracker", flush=True)
+        return False
+    if DEBUG: print(f"      + {title} | {(job.get('loc') or '')[:60]} | {rt}", flush=True)
     smin, smax, sflag = job.get("smin"), job.get("smax"), None
     if smin is None: smin, smax, sflag = salary(job.get("plain"))
     elif smin == smax: sflag = "single figure, check"
     flags = [f for f in ["salary unknown" if smin is None else None, sflag,
-             "check location" if rt in ("remote_unknown", "us_unspecified") else None] if f]
+             "check location" if rt in ("remote_unknown", "us_unspecified") else None,
+             "check if hybrid" if rt == "home_unclear" else None] if f]
     today = datetime.date.today().isoformat()
     con.execute("""INSERT INTO jobs (company,title,source,location,remote_type,salary_min,salary_max,url,description,
         discovered_date,last_seen_date,flags,dedupe_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)

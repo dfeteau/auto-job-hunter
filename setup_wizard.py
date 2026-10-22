@@ -96,6 +96,9 @@ def main():
     for w in raw_ind:
         industry_words += INDUSTRIES.get(w.lower(), [w])
     companies = ask_list("Companies you never want to see (comma-separated, or none)", "none")
+    has_clearance = ask_yes("Do you hold an active US security clearance?", False)
+    if not has_clearance:
+        print("   Jobs that require a clearance will be skipped.")
 
     section("3. Location")
     print("   This tool searches US jobs only.")
@@ -146,7 +149,10 @@ def main():
     profile = {
         "_readme": "Created by setup_wizard.py. Edit any value by hand, or run python3 setup_wizard.py again. See README.md, step 2.",
         "search": {"titles": titles, "excluded_title_words": excluded_titles,
-                   "excluded_industry_words": industry_words, "excluded_companies": companies},
+                   "excluded_title_exceptions": ["senior associate", "sr. associate", "sr associate",
+                                                 "associate principal", "associate director", "associate vice president"],
+                   "excluded_industry_words": industry_words, "excluded_companies": companies,
+                   "exclude_clearance_required": not has_clearance},
         "location": {"country": "US", "home_metro_name": city or st, "home_metro_patterns": patterns,
                      "accept": accept, "home_min_salary": home_min},
         "salary": {"floor_high_end": floor, "tiers_by_min": tiers, "unknown_points": 0},
@@ -166,6 +172,7 @@ def main():
           f"onsite elsewhere: {yes(accept['onsite_other'])}")
     if home_min: print(f"   Commute minimum:   ${home_min:,}")
     print(f"   Salary:            drop if range tops out under ${floor:,}; best score at ${ideal:,}+")
+    print(f"   Clearance jobs:    {'kept' if has_clearance else 'skipped'}")
     print(f"   Skills:            {', '.join(skills) or 'none'}")
     print(f"   Shortlist:         Fit Score {gate}+")
     print("\n   Example scores: remote at your target salary = 100; remote with no salary listed = 50"
