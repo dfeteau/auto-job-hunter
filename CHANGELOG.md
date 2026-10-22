@@ -3,6 +3,17 @@
 Notable changes to auto-job-hunter, newest first. If you made your own copy from the template,
 compare this list with your copy to see what's new. Full history is on the Commits page on GitHub.
 
+## 1.5.0 (2026-10-22)
+
+### Added
+- **`tools/add_to_tracker.py`: every qualifying job goes into your tracker.** It backs up your tracker to `tracker/backups/`, adds each job that passed your Fit Score gate (Status New, date, link, salary, location, work type, source, Fit Score), skips jobs already there, and updates `seen.json` so they don't come back. `--dry-run` shows what would be added. `run_daily.py` prints the command when jobs qualify. Why: approving 25 jobs one at a time before they're tracked is too slow. Now you review them in the tracker at your own pace.
+- **Assistant Notes column** in the tracker template (.xlsx and .csv). Your assistant's Resume Match reasoning and flags go here, so **Notes stays yours.** `add_to_tracker.py` adds the column to an existing tracker that doesn't have one. `migrate_tracker.py` now puts its own notes (original status, unrecognized work type) in Assistant Notes and copies your Notes unchanged.
+- **Review pass** in the AI assistant guide (AGENTS.md, CLAUDE.md and the Claude skill): when you finish reviewing, the assistant reads your Status and Notes, asks about patterns (for example, several jobs skipped as "too junior"), and suggests `profile.json` changes, made only after you agree.
+
+### Changed
+- The daily routine in AGENTS.md, the skill and the README: no per-job approval; the assistant adds every qualifying job, fills in Resume Match and Assistant Notes, and gives a short summary instead of asking about each job. Assistants never write in your Notes column.
+- `export_shortlist.py` (for CSV trackers) includes the Assistant Notes column and puts flags there instead of in Notes.
+
 ## 1.4.0 (2026-10-22)
 
 ### Changed

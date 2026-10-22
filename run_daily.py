@@ -83,6 +83,7 @@ def main():
     for r in shortlist:
         print(f"  {r['fit']} | {r['company']} | {r['title']} | {money(r['smin'], r['smax'])}")
     print(f"\nReport saved: {path}")
+    if shortlist: print("Next: python3 tools/add_to_tracker.py tracker/my_job_tracker.xlsx  (adds these to your tracker)")
 
 if __name__ == "__main__":
     main()

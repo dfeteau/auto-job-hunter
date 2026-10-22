@@ -9,14 +9,17 @@ to run the setup conversation, what each part does, and the rules to follow.
 auto-job-hunter checks the job boards of companies the person cares about (Greenhouse, Lever, Ashby,
 SmartRecruiters, Workable, Workday), keeps only jobs that match their criteria, scores them on salary and
 location (**Fit Score**), and produces a daily report. You then score the qualifying jobs against their resume
-(**Resume Match**) and help them log the ones worth tracking.
+(**Resume Match**). Every qualifying job goes into their tracker; they review the rows, and their notes
+tell you how to tune the search.
 
 ```
 setup_wizard.py ─> config/profile.json          (their criteria)
 tracker ─> tools/import_tracker.py ─> config/seen.json + config/companies.json
 collectors/find_boards.py, find_workday.py ─> job boards for each company (one-time, then as companies are added)
 run_daily.py ─> collect ─> score ─> reports/report_YYYY-MM-DD.md
-you ─> Resume Match on the report's qualifying jobs ─> they choose ─> rows added to their tracker
+tools/add_to_tracker.py ─> every qualifying job added to the tracker (Status New)
+you ─> Resume Match + Assistant Notes on the new rows ─> they review, set Status, write Notes
+you ─> review pass: read their Notes, ask questions, suggest profile.json changes
 ```
 
 It does not search LinkedIn, Indeed or other job sites. Jobs found there can be handled by hand (see
@@ -25,9 +28,10 @@ It does not search LinkedIn, Indeed or other job sites. Jobs found there can be 
 ## What you can do depends on your tool
 
 - **You can run commands and read files** (Claude Code, Cursor, Copilot agent mode, and similar): run the
-  scripts yourself, read the report directly, and edit the tracker with their permission.
+  scripts yourself, read the report directly, and add and annotate rows as described below.
 - **You can only chat** (a chat window with file uploads): guide them to run each command, ask them to paste
-  output or upload `reports/report_YYYY-MM-DD.md` and their tracker, and give them exact rows or values to add.
+  output or upload `reports/report_YYYY-MM-DD.md` and their tracker. They run `tools/add_to_tracker.py`;
+  you give them the Resume Match and Assistant Notes values to paste in.
 - The collectors need internet access to the job boards. If your environment blocks it, the person runs them
   on their own computer.
 
@@ -46,7 +50,7 @@ Go one step at a time and confirm before moving on. Keep questions short.
        their columns were matched, fix anything wrong (rename a header in a copy, or pass `--sheet`), then run
        it without `--dry-run`. It writes `tracker/my_job_tracker.xlsx` and never changes their original.
      - If you can't run commands: read their file and produce rows in the template's columns (below), mapping
-       statuses with the table below and keeping their original status text in Notes when you had to guess.
+       statuses with the table below and keeping their original status text in Assistant Notes when you had to guess.
        Ask them to paste the rows into a copy of `templates/job_tracker_template.xlsx`.
      - Then: `python3 tools/import_tracker.py tracker/my_job_tracker.xlsx`. This records every job they've
        already seen (so it's never suggested again) and adds every company to `config/companies.json`.
@@ -74,6 +78,9 @@ Go one step at a time and confirm before moving on. Keep questions short.
 
 ## Daily routine
 
+Don't ask the person to approve jobs one at a time. With 25 qualifying jobs that would mean 25 answers.
+Everything that qualifies goes into the tracker, and they review it there at their own pace.
+
 1. They run `python3 run_daily.py` (or you do). It saves `reports/report_YYYY-MM-DD.md`.
 2. Read the report:
    - **Summary:** found, excluded by their criteria, already in their tracker, qualifying. These add up.
@@ -81,14 +88,22 @@ Go one step at a time and confirm before moving on. Keep questions short.
      dropped as "Onsite in home area"), point it out and offer the matching `profile.json` change.
      "Excluded industry word" means one of their `excluded_industry_words` appeared in the title, the company
      name, or the posting's opening description of the employer ("X is a healthcare company").
-   - **Qualifying jobs** and **Job descriptions:** score Resume Match for each (next section).
-3. Present a short table: Resume Match, Fit Score, company, title, pay, location, and one line on the best
-   overlap and biggest gap. Call out flags: `salary unknown`, `single figure, check`, `check location`,
-   `check if hybrid`.
-4. Ask which jobs to log. Add them to the tracker with Status `New`, Date Added today, link, salary, Fit Score
-   and Resume Match. Then run `python3 tools/import_tracker.py tracker/my_job_tracker.xlsx` so they aren't
-   suggested again and any new companies join the search list.
-5. When they apply, get rejected, interview or get an offer, update the row's Status and dates.
+3. **Add every qualifying job:** `python3 tools/add_to_tracker.py tracker/my_job_tracker.xlsx`. It backs up
+   the tracker, adds each job with Status `New`, and updates `seen.json` so they aren't suggested again.
+4. **Score and annotate the new rows:** fill in Resume Match (next section) and write one or two lines in
+   **Assistant Notes**: best overlap, biggest gap, and anything to check (flags such as `salary unknown`,
+   `check location`, `check if hybrid`, a previous application at the same company, an industry they avoid).
+   Use the job descriptions at the end of the report.
+5. **Give them a short summary,** not a question per job: how many were added, the top few by Resume Match
+   with one line each, and anything that needs their attention. Then let them review in the tracker.
+6. **They review:** they set Status (Applied, Did Not Apply, Saved, ...) and write their reasons in **Notes**.
+7. **Review pass:** when they say they're done reviewing, read Status and Notes on the rows since the last
+   review and look for patterns: the same reason for skipping several jobs ("too junior", "onsite",
+   "pay too low", "agency recruiter"), companies or industries they keep passing on, or titles they apply to
+   that score low. Ask them short questions about what you see, then suggest specific `profile.json` changes
+   (title words, industries, companies, location, salary, Fit Score gate) and make them only after they agree.
+8. Later, when they apply, get rejected, interview or get an offer, update the row's Status and dates if they
+   ask you to.
 
 ## Resume Match
 
@@ -107,7 +122,11 @@ qualifications over nice-to-haves. Never invent experience.
 ## Template tracker columns
 
 `Date Added, Company, Job Title, Location, Work Type, Salary Range, Salary Min, Source, Link, Date Applied,
-Status, Resume Match, Fit Score, Notes` (sheet "Applications", headers in row 1).
+Status, Resume Match, Fit Score, Notes, Assistant Notes` (sheet "Applications", headers in row 1).
+
+- **Notes** belong to the person. **Assistant Notes** are yours: Resume Match rationale, flags, and anything
+  the tools record (such as an original status during migration). If their tracker has no Assistant Notes
+  column, `add_to_tracker.py` adds one after their last column.
 
 - **Status values:** New, Saved, Applied, Did Not Apply, Rejected, Interviewing, Second Round, Offer, Withdrawn.
 - **Work Type values:** Remote, Hybrid - Home Metro, Onsite - Home Metro, Hybrid - Other, Onsite - Other.
@@ -119,15 +138,17 @@ Status, Resume Match, Fit Score, Notes` (sheet "Applications", headers in row 1)
 ## Jobs they find elsewhere (LinkedIn, Indeed, referrals)
 
 Ask them to paste the description or save the page and share it. Check it against the tracker, score Fit
-(using `profile.json`) and Resume Match, and log it if they want. Then add the company with `add_companies.py`
+(using `profile.json`) and Resume Match, and add it with Status `New` and your notes in Assistant Notes. Then add the company with `add_companies.py`
 and run `find_boards.py`, so future postings there are found automatically.
 
 ## Rules
 
 - **Never apply to jobs, contact employers or recruiters, or send messages for them** without their explicit
   go-ahead for that specific action.
-- **Their tracker is theirs.** Don't delete or reorder rows, and don't overwrite what they wrote. Add your
-  notes after theirs (for example "Note: ..."), or ask first. Make a backup copy before any bulk change.
+- **Their tracker is theirs.** Don't delete or reorder rows, and don't overwrite what they wrote. Never write
+  in their Notes column; put your notes in Assistant Notes. Adding qualifying jobs with `add_to_tracker.py`
+  and filling Resume Match and Assistant Notes on those rows is expected; ask before any other change.
+  Make a backup copy before any bulk change.
 - **Keep personal data out of git.** The tracker, resume, `config/seen.json`, `config/companies.json` and
   reports describe their job search. Their copy of the repo should be private. `tracker/`, `reports/` and
   `data/` are already in `.gitignore`. Don't commit those to a public repository.
@@ -149,7 +170,8 @@ and run `find_boards.py`, so future postings there are found automatically.
 | `tools/migrate_tracker.py` | Copies an existing tracker into the template |
 | `tools/import_tracker.py` | Reads the tracker: fills `seen.json`, adds companies |
 | `tools/add_companies.py` | Adds companies by name |
-| `tools/export_shortlist.py` | Shortlist as tracker-ready CSV rows |
+| `tools/add_to_tracker.py` | Adds every qualifying job to an .xlsx tracker (Status New), then updates `seen.json` |
+| `tools/export_shortlist.py` | Shortlist as tracker-ready CSV rows (for CSV trackers) |
 | `collectors/find_boards.py`, `find_workday.py` | Find each company's job board |
 | `collectors/collect.py` | Pull jobs from every known board (`--debug` shows every decision) |
 | `scoring/score.py` | Fit Score, gate, shortlist |

@@ -1,6 +1,6 @@
 # auto-job-hunter
 
-A personal job-search pipeline. It checks company job boards directly, keeps only the jobs that match your criteria, scores them on salary and location, and gives you a ranked shortlist. You then score the shortlist against your resume (with Claude) and log the keepers in your tracker.
+A personal job-search pipeline. It checks company job boards directly, keeps only the jobs that match your criteria, scores them on salary and location, and gives you a ranked shortlist. Every qualifying job goes into your tracker, where you review it, and an AI assistant can score each one against your resume and learn from your notes.
 
 **What it does:** Find boards → Collect jobs → Filter → Skip jobs you already track → Score → Shortlist
 
@@ -149,7 +149,8 @@ This collects from every known board, scores the results, and saves a report to 
 ```bash
 python3 collectors/collect.py         # pull new jobs from every known board (add --debug to see every decision)
 python3 scoring/score.py              # print the ranked shortlist (add --all to include jobs below your gate)
-python3 tools/export_shortlist.py     # optional: CSV in your tracker's format, in exports/
+python3 tools/add_to_tracker.py      # add every qualifying job to tracker/my_job_tracker.xlsx (Status New)
+python3 tools/export_shortlist.py     # CSV trackers: the shortlist in your tracker's format, in exports/
 ```
 
 Flags you may see on a job:
@@ -159,11 +160,19 @@ Flags you may see on a job:
 - `check location`: listed as remote, but the country isn't clear.
 - `check if hybrid`: in your home area, but the posting doesn't say remote, hybrid or onsite. It is scored like a hybrid job.
 
-### Step 7. Resume Match and tracking
+### Step 7. Add to your tracker, review, and tune
 
-1. Give Claude your resume and the shortlist. [docs/RESUME_MATCH.md](docs/RESUME_MATCH.md) has a prompt to copy.
-2. Add the jobs you want to track to your tracker (Status: New).
-3. Run `python3 tools/import_tracker.py your_tracker.xlsx` again so they don't come back.
+You don't pick jobs one by one before they're tracked. Everything that qualifies goes in, and you review it there.
+
+1. **Add every qualifying job:** `python3 tools/add_to_tracker.py tracker/my_job_tracker.xlsx` (or a path to
+   your own .xlsx tracker). It backs up your tracker to `tracker/backups/`, adds each job with Status New, and
+   updates the list of tracked jobs so they don't come back. CSV tracker? Use `tools/export_shortlist.py` and paste.
+2. **Resume Match:** your assistant fills in Resume Match (0 to 100) and writes its reasoning and any flags in the
+   **Assistant Notes** column. Without an assistant, [docs/RESUME_MATCH.md](docs/RESUME_MATCH.md) has a prompt to copy.
+3. **Review:** go through the New rows when it suits you. Set Status (Applied, Did Not Apply, Saved, ...) and
+   write your reasons in **Notes**. That column is yours; the assistant never writes there.
+4. **Tune:** when you're done reviewing, tell your assistant. It reads your Notes, asks about patterns (for
+   example, several jobs skipped as "too junior"), and suggests changes to `config/profile.json`.
 
 ---
 
@@ -208,6 +217,7 @@ tools/
   migrate_tracker.py    Copies an existing tracker (any layout) into the template
   import_tracker.py     Reads your tracker: skip tracked jobs, add new companies
   add_companies.py      Adds companies by name
+  add_to_tracker.py     Adds every qualifying job to your .xlsx tracker (Status New)
   export_shortlist.py   Shortlist as a tracker-ready CSV
 templates/              Blank tracker (.xlsx and .csv)
 docs/RESUME_MATCH.md    How to score the shortlist against your resume with Claude

@@ -1,6 +1,6 @@
 ---
 name: job-search-assistant
-description: Helps set up and run auto-job-hunter (a job-board pipeline with a daily report), migrate an existing job tracker into it, score Resume Match on the daily report, and keep the tracker up to date. Use when someone mentions auto-job-hunter, their job-hunter daily report, or wants help setting up or running this job search process.
+description: Helps set up and run auto-job-hunter (a job-board pipeline with a daily report), migrate an existing job tracker into it, score Resume Match on the daily report, add qualifying jobs to the tracker, and tune the search from the person's tracker notes. Use when someone mentions auto-job-hunter, their job-hunter daily report, or wants help setting up or running this job search process.
 ---
 
 # Job search assistant for auto-job-hunter
@@ -26,9 +26,13 @@ need for the task: their tracker, resume, or `reports/report_YYYY-MM-DD.md`.
    column matches, run it, then `python3 tools/import_tracker.py tracker/my_job_tracker.xlsx`), which carries
    over their history and fills the company list. Then run `python3 setup_wizard.py`, add dream companies with
    `tools/add_companies.py`, and run `init_db.py` and `collectors/find_boards.py`.
-2. **Daily:** they run `python3 run_daily.py`. Read the report, score Resume Match (0 to 100, required
-   qualifications weighted most, never invent experience), present a short table with the best overlap and
-   biggest gap for each job, then log the jobs they choose with Status `New` and re-run `import_tracker.py`.
-3. **Rules:** never apply or contact anyone for them without explicit permission; don't delete or overwrite
-   their tracker content, and back it up before bulk edits; keep their tracker, resume and reports out of
+2. **Daily:** they run `python3 run_daily.py`. Read the report, then add every qualifying job with
+   `python3 tools/add_to_tracker.py tracker/my_job_tracker.xlsx` (no per-job approval). Fill in Resume Match
+   (0 to 100, required qualifications weighted most, never invent experience) and a line or two in Assistant
+   Notes (best overlap, biggest gap, flags). Give a short summary of the top jobs; they review in the tracker,
+   set Status and write their reasons in Notes.
+3. **Review pass:** when they've finished reviewing, read their Status and Notes, look for patterns in what
+   they skip or apply to, ask short questions, and suggest `profile.json` changes. Change nothing until they agree.
+4. **Rules:** never apply or contact anyone for them without explicit permission; never write in their
+   Notes column (yours is Assistant Notes); don't delete or overwrite their tracker content, and back it up before bulk edits; keep their tracker, resume and reports out of
    public repositories; explain any criteria change before making it.

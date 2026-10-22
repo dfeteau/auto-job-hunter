@@ -6,9 +6,9 @@ What it does:
 - Finds the header row and matches your columns to the template by name. Common variations work:
   "Employer" -> Company, "Position" or "Role" -> Job Title, "Applied On" -> Date Applied, "URL" -> Link, and so on.
 - Standardizes statuses (for example "Phone screen" -> Interviewing, "Declined" -> Rejected) and keeps the
-  original wording in Notes when it had to guess.
+  original wording in Assistant Notes when it had to guess. Your own Notes are copied unchanged.
 - Turns date text into real dates, keeps links (including =HYPERLINK formulas), and copies any columns the
-  template doesn't have to the right of Notes, with their original headers, so nothing is lost.
+  template doesn't have to the right of Assistant Notes, with their original headers, so nothing is lost.
 - Never changes your original file.
 
 Then run: python3 tools/import_tracker.py tracker/my_job_tracker.xlsx
@@ -37,9 +37,10 @@ FIELDS = {
     "Resume Match": ["resume match", "resume match %", "match", "match %", "match score"],
     "Fit Score":    ["fit score", "fit score %"],
     "Notes":        ["notes", "note", "comments", "comment", "next step", "next steps", "notes next step"],
+    "Assistant Notes": ["assistant notes", "ai notes", "claude notes", "match rationale", "rationale"],
 }
 TEMPLATE_COLS = ["Date Added", "Company", "Job Title", "Location", "Work Type", "Salary Range", "Salary Min", "Source",
-                 "Link", "Date Applied", "Status", "Resume Match", "Fit Score", "Notes"]
+                 "Link", "Date Applied", "Status", "Resume Match", "Fit Score", "Notes", "Assistant Notes"]
 
 STATUS_RULES = [  # first match wins; checked against the lowercase original status
     (r"offer|hired|accepted", "Offer"),
@@ -161,10 +162,11 @@ def main():
         applied = to_date(get("Date Applied")[0])
         status, original = map_status(get("Status")[0], applied)
         notes = [str(get("Notes")[0]).strip()] if get("Notes")[0] not in (None, "") else []
-        if original: notes.append(f"original status: {original}"); guessed += 1
+        an = [str(get("Assistant Notes")[0]).strip()] if get("Assistant Notes")[0] not in (None, "") else []
+        if original: an.append(f"original status: {original}"); guessed += 1
         wt_raw = str(get("Work Type")[0] or "")
         wt = next((v for p, v in WORK_TYPE_RULES if re.search(p, wt_raw.lower())), None) if wt_raw else None
-        if wt_raw and not wt: notes.append(f"work type: {wt_raw}")
+        if wt_raw and not wt: an.append(f"work type: {wt_raw}")
         sal = get("Salary Range")[0]
         smin = to_money(get("Salary Min")[0]) if "Salary Min" in found else (to_money(sal) if sal not in (None, "") else None)
         values = {
@@ -173,7 +175,7 @@ def main():
             "Location": get("Location")[0], "Work Type": wt, "Salary Range": sal, "Salary Min": smin,
             "Source": get("Source")[0], "Link": "Link" if url else None, "Date Applied": applied,
             "Status": status, "Resume Match": get("Resume Match")[0], "Fit Score": get("Fit Score")[0],
-            "Notes": "; ".join(notes) or None}
+            "Notes": "; ".join(notes) or None, "Assistant Notes": "; ".join(an) or None}
         for ci, col in enumerate(TEMPLATE_COLS, 1):
             v = values[col]
             ws.cell(rowi, ci).value = v if not isinstance(v, str) else v.strip()
@@ -183,7 +185,7 @@ def main():
             ws.cell(rowi, len(TEMPLATE_COLS) + 1 + j).value = v
         copied += 1
     wb.save(out)
-    print(f"\nCopied {copied} jobs to {out}" + (f" ({guessed} statuses standardized; originals kept in Notes)" if guessed else ""))
+    print(f"\nCopied {copied} jobs to {out}" + (f" ({guessed} statuses standardized; originals kept in Assistant Notes)" if guessed else ""))
     print(f"Your original file was not changed.\nNext: python3 tools/import_tracker.py {out}")
 
 if __name__ == "__main__":
