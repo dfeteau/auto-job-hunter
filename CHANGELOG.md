@@ -3,6 +3,17 @@
 Notable changes to auto-job-hunter, newest first. If you made your own copy from the template,
 compare this list with your copy to see what's new. Full history is on the Commits page on GitHub.
 
+## 1.3.0 (2026-10-22)
+
+### Added
+- **Bring your existing tracker** (`tools/migrate_tracker.py`). Copies any tracker (Excel or CSV, any column layout) into the template: matches common column names automatically, standardizes statuses and dates, keeps links and extra columns, and never changes the original. `--dry-run` shows the column matches first. Then `import_tracker.py` carries your history over and adds every company in it to the search list.
+- **Guide for AI assistants** (`AGENTS.md`): what the project does, a step-by-step setup conversation (including asking for and migrating an existing tracker), the daily routine, Resume Match scoring, tracker columns and status mapping, and rules (never apply or contact anyone without permission, don't overwrite the person's tracker, keep personal data out of git).
+- **`CLAUDE.md`** so Claude Code loads the guide automatically, and a **Claude skill** (`skills/job-search-assistant/`) people can install.
+- README sections: "Already tracking your applications somewhere?" and "Using an AI assistant".
+
+### Changed
+- `tracker/` is excluded from git, and is now the suggested home for your tracker.
+
 ## 1.2.0 (2026-10-21)
 
 ### Added

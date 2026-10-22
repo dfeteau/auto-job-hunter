@@ -68,8 +68,27 @@ With the example settings, a remote job paying $130K+ scores 100, a remote job w
 
 ### Step 3. Set up your tracker
 
-- **New tracker:** copy `templates/job_tracker_template.xlsx` (or the `.csv`) somewhere you'll keep it. Its second tab explains each column.
-- **Your own tracker:** open `config/tracker_map.json` and put your column headers next to `company`, `title`, `status` and `link`. Set `sheet` to the tab name if it isn't the first tab.
+**Already tracking your applications somewhere?** Bring it over, so your history and every company in it are
+included from day one:
+
+```bash
+python3 tools/migrate_tracker.py ~/path/to/your_tracker.xlsx --dry-run   # shows how your columns will be matched
+python3 tools/migrate_tracker.py ~/path/to/your_tracker.xlsx             # creates tracker/my_job_tracker.xlsx
+```
+
+It matches common column names automatically ("Employer", "Position", "Applied On", "URL", "Stage" and so on),
+standardizes statuses (keeping your original wording in Notes when it had to guess), converts dates, keeps
+links, and copies any extra columns to the right of Notes. A CSV export works too (Google Sheets, Notion,
+Airtable, Excel). Your original file is never changed. Use `--sheet "Tab name"` if your tracker isn't on the
+first tab.
+
+**Prefer to keep your own tracker as it is?** Open `config/tracker_map.json` and put your column headers next to
+`company`, `title`, `status` and `link`. Set `sheet` to the tab name if it isn't the first tab.
+
+**Starting fresh?** Copy `templates/job_tracker_template.xlsx` to `tracker/my_job_tracker.xlsx`. Its second tab
+explains each column.
+
+The `tracker/` folder is excluded from git, so your tracker isn't uploaded by accident.
 
 Reading `.xlsx` files needs one package: `pip3 install openpyxl`. CSV trackers need nothing extra.
 
@@ -78,7 +97,7 @@ Reading `.xlsx` files needs one package: `pip3 install openpyxl`. CSV trackers n
 The pipeline searches only companies on your list. Add them any of these ways:
 
 ```bash
-python3 tools/import_tracker.py ~/path/to/your_tracker.xlsx     # every company in your tracker
+python3 tools/import_tracker.py tracker/my_job_tracker.xlsx     # every company in your tracker
 python3 tools/add_companies.py "Acme Corp" "Globex"              # specific companies
 python3 tools/add_companies.py --file my_companies.txt           # one name per line
 ```
@@ -148,6 +167,22 @@ Flags you may see on a job:
 
 ---
 
+## Using an AI assistant (Claude, ChatGPT and others)
+
+An assistant can walk you through setup, carry over your existing tracker, read your daily report, score
+Resume Match, and keep your tracker current. This repository includes what it needs:
+
+- **`AGENTS.md`**: a complete guide for AI assistants. Coding assistants that open this folder (Cursor,
+  Copilot and others) read it automatically. In a chat assistant, upload it at the start of the conversation.
+- **`CLAUDE.md`**: Claude Code loads this automatically when you open the folder.
+- **`skills/job-search-assistant/`**: a Claude skill. Install it (zip the folder and upload it under
+  Customize, Skills in Claude) so any Claude conversation knows how to help with this project.
+
+A good first message: *"Help me set up auto-job-hunter. Here's my resume and my current job tracker."* The
+assistant will migrate your tracker, which also fills the company list, and walk you through your criteria.
+
+---
+
 ## Changing your criteria later
 
 Edit `config/profile.json` and run `python3 scoring/score.py`. Scoring re-applies your title, location, company and tracker rules to everything already collected, so you don't need to collect again. (Adding new titles does need a fresh `collect.py` run to pick up jobs that were skipped before.)
@@ -170,12 +205,15 @@ collectors/
 scoring/
   score.py              Fit Score, gate, ranking, shortlist
 tools/
+  migrate_tracker.py    Copies an existing tracker (any layout) into the template
   import_tracker.py     Reads your tracker: skip tracked jobs, add new companies
   add_companies.py      Adds companies by name
   export_shortlist.py   Shortlist as a tracker-ready CSV
 templates/              Blank tracker (.xlsx and .csv)
 docs/RESUME_MATCH.md    How to score the shortlist against your resume with Claude
 setup_wizard.py         Asks your criteria and writes config/profile.json
+AGENTS.md, CLAUDE.md    Guide for AI assistants (Claude, ChatGPT, Cursor and others)
+skills/                 Claude skill for this project
 run_daily.py            One-command daily run and report
 init_db.py              Creates data/jobs.db
 data/jobs.db            Your collected jobs (local only, never uploaded)

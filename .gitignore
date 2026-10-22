@@ -7,3 +7,5 @@ config/profile.backup.json
 data/run_stats/
 reports/*
 !reports/.gitkeep
+tracker/
+*.xlsx.bak
