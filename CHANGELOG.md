@@ -3,6 +3,15 @@
 Notable changes to auto-job-hunter, newest first. If you made your own copy from the template,
 compare this list with your copy to see what's new. Full history is on the Commits page on GitHub.
 
+## 1.4.0 (2026-10-22)
+
+### Changed
+- **Industry exclusions look beyond the job title.** Your `excluded_industry_words` are now also checked against the company name ("Spring Health") and how the posting describes the employer in its opening lines ("FreedomCare is a healthcare company"). Only the first 800 characters are read, and the word has to sit near "company", "provider", "platform" and similar, so benefits text like "Healthcare Plan" doesn't count. Excluded jobs still show as "Excluded industry word" in the report. Why: healthcare employers with neutral job titles ("Senior Insights Analyst") were reaching the qualifying list.
+- **"Director" and "Head of" are suggested title exclusions.** The setup wizard's default list and the example `profile.json` now include them. Your existing `profile.json` is not changed; add them yourself if you want. "Associate Director" still passes through the default title exceptions.
+
+### Docs
+- README, AGENTS.md and the setup wizard explain where industry words are checked.
+
 ## 1.3.0 (2026-10-22)
 
 ### Added

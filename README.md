@@ -39,7 +39,7 @@ python3 setup_wizard.py
 
 It asks about 15 questions (job titles, words to exclude, industries and companies to avoid, your home city and nearby cities, which kinds of remote, hybrid and onsite jobs to keep, your lowest and target salary, your top skills, and how strict the shortlist should be), shows a summary, and writes `config/profile.json`. Press Enter to accept a suggestion. Run it again any time; your previous settings are saved to `config/profile.backup.json`.
 
-Industry shortcuts you can type: healthcare, pharma, defense, government, gambling, crypto, insurance. Each expands to a set of title keywords.
+Industry shortcuts you can type: healthcare, pharma, defense, government, gambling, crypto, insurance. Each expands to a set of keywords, which are checked against the job title, the company name ("Spring Health"), and how the posting describes the company in its opening lines ("FreedomCare is a healthcare company").
 
 **Prefer to edit by hand?** Everything the wizard writes lives in `config/profile.json`:
 
@@ -48,7 +48,7 @@ Industry shortcuts you can type: healthcare, pharma, defense, government, gambli
 | `search` | `titles` | Job titles to look for. A job matches if its title *contains* one of these, so "Data Analyst" also matches "Senior Data Analyst, Marketing". |
 | | `excluded_title_words` | Skip titles containing any of these whole words (for example Junior, Intern, Manager). Whole words only, so "Intern" does not skip "Internal Audit Analyst". |
 | | `excluded_title_exceptions` | Phrases kept even though they contain an excluded word, for example "Senior Associate" when "Associate" is excluded. |
-| | `excluded_industry_words` | Skip titles containing these (for example "clinical", "pharma"). Leave empty to allow all industries. |
+| | `excluded_industry_words` | Skip jobs where one of these appears in the title, the company name, or the posting's opening description of the company (for example "clinical", "pharma"). Benefits text further down, like "Healthcare Plan", doesn't count. Leave empty to allow all industries. |
 | | `exclude_clearance_required` | `true` skips postings that require a security clearance ("Clearance Required: None" is fine). Set `false` if you hold one. |
 | | `excluded_companies` | Companies never to show. |
 | `location` | `home_metro_name`, `home_metro_patterns` | Your metro area and the words that identify it in a job location (city names, state, `, co\\b` for ", CO"). |

@@ -11,7 +11,9 @@
       "Junior",
       "Intern",
       "Entry Level",
-      "Manager"
+      "Manager",
+      "Director",
+      "Head of"
     ],
     "excluded_title_exceptions": [
       "senior associate",

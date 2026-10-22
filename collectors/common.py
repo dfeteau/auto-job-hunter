@@ -133,6 +133,14 @@ class Filter:
         self.exceptions = [e.lower() for e in s.get("excluded_title_exceptions", DEFAULT_TITLE_EXCEPTIONS)]
         words = [re.escape(w) for w in s.get("excluded_industry_words", [])]
         self.industry = re.compile("|".join(words), re.I) if words else None
+        # Also used on the company name and on how the posting describes the employer in its opening
+        # lines ("FreedomCare is a healthcare company"). Only the first 800 characters are checked, and the
+        # word must sit near "company", "provider" and the like, so benefits text ("Healthcare Plan") is ignored.
+        alt = "|".join(words)
+        self.industry_co = re.compile(r"\b(?:" + alt + ")", re.I) if words else None
+        self.industry_intro = re.compile(r"\b(?:" + alt + r")\w*\b[\w ,&-]{0,30}?\b(?:company|companies|"
+            r"organization|organisation|provider|system|platform|startup|leader|network|services|agency|"
+            r"practice|firm|business)\b", re.I) if words else None
         self.no_clearance = s.get("exclude_clearance_required", True)
         self.skip_cos = {norm_co(x) for x in s.get("excluded_companies", [])}
         self.accept = PROFILE["location"]["accept"]
@@ -161,13 +169,19 @@ class Filter:
         g = LOC_GROUP.get(rt)
         return bool(g) and self.accept.get(g, False)
 
+    def excluded_industry(self, company, title, plain=""):
+        """True if an excluded industry word is in the title, the company name, or the employer's
+        description of itself at the start of the posting."""
+        return bool(self.industry.search(title or "") or self.industry_co.search(company or "")
+                    or self.industry_intro.search((plain or "")[:800]))
+
     def tracked(self, company, title):
         return norm_co(company) + "|" + norm_title(title) in self.seen
 
     def why_not(self, company, title, loc, rt, plain):
         """Reason a job is excluded by the collection rules, or None."""
         if self.title_excluded(title): return "Excluded title word"
-        if self.industry and self.industry.search(title): return "Excluded industry word"
+        if self.industry and self.excluded_industry(company, title, plain): return "Excluded industry word"
         if not self.location_ok(rt): return LOCATION_REASON.get(rt, "Location not accepted")
         if self.no_clearance and needs_clearance(plain): return "Security clearance required"
         return None

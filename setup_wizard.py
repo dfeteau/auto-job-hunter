@@ -86,12 +86,13 @@ def main():
                       "A job matches if its title CONTAINS one of these, so 'Data Analyst' also finds "
                       "'Senior Data Analyst, Marketing'. Example: Senior Data Analyst, Data Analyst, BI Analyst",
                       required=True)
-    excluded_titles = ask_list("Words that rule a title out (comma-separated)", "Junior, Intern, Entry Level",
+    excluded_titles = ask_list("Words that rule a title out (comma-separated)", "Junior, Intern, Entry Level, Director, Head of",
                                "Example: Junior, Intern, Manager, Director. Type 'none' for no exclusions.")
 
     section("2. Industries and companies to avoid")
     print("   Shortcuts: " + ", ".join(INDUSTRIES) + ". You can also type your own keywords.")
-    raw_ind = ask_list("Industries or title keywords to avoid (comma-separated, or none)", "none")
+    raw_ind = ask_list("Industries or keywords to avoid (comma-separated, or none)", "none",
+                       "Checked against the job title, the company name, and how the posting describes the company.")
     industry_words = []
     for w in raw_ind:
         industry_words += INDUSTRIES.get(w.lower(), [w])

@@ -79,6 +79,8 @@ Go one step at a time and confirm before moving on. Keep questions short.
    - **Summary:** found, excluded by their criteria, already in their tracker, qualifying. These add up.
    - **Excluded, by reason** and the **detail** table: if a reason looks too strict (for example many good jobs
      dropped as "Onsite in home area"), point it out and offer the matching `profile.json` change.
+     "Excluded industry word" means one of their `excluded_industry_words` appeared in the title, the company
+     name, or the posting's opening description of the employer ("X is a healthcare company").
    - **Qualifying jobs** and **Job descriptions:** score Resume Match for each (next section).
 3. Present a short table: Resume Match, Fit Score, company, title, pay, location, and one line on the best
    overlap and biggest gap. Call out flags: `salary unknown`, `single figure, check`, `check location`,
