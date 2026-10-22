@@ -201,6 +201,10 @@ data/jobs.db            Your collected jobs (local only, never uploaded)
 | Too few jobs | Check the report's "Excluded, by reason" table. Add companies, loosen `excluded_title_words`, or set more `accept` options to `true`. `python3 collectors/collect.py --debug` shows every decision. |
 | Too many jobs | Raise `gate_min` or `floor_high_end`, or narrow `titles`. |
 
+## What's new
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+
 ## License
 
 MIT. Free to use, change and share. See [LICENSE](LICENSE).
