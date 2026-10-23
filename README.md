@@ -38,7 +38,7 @@ Run the setup wizard:
 python3 setup_wizard.py
 ```
 
-It asks about 15 questions (job titles, words to exclude, industries and companies to avoid, your home city and nearby cities, which kinds of remote, hybrid and onsite jobs to keep, your lowest and target salary, your top skills, and how strict the shortlist should be), shows a summary, and writes `config/profile.json`. Press Enter to accept a suggestion. Run it again any time; your previous settings are saved to `config/profile.backup.json`. At the end it offers to set up your tracker (step 3).
+It asks about 15 questions (job titles, words to exclude, industries and companies to avoid, your home city and nearby cities, which kinds of remote, hybrid and onsite jobs to keep, your lowest and target salary, your top skills, and how strict the shortlist should be), shows a summary, and writes `config/profile.json`. Press Enter to accept a suggestion. Run it again any time; your previous settings are saved to `config/profile.backup.json`. At the end it offers to set up your tracker (step 3) and, if your company list is short, to find companies for you (step 4).
 
 Industry shortcuts you can type: healthcare, pharma, defense, government, gambling, crypto, insurance. Each expands to a set of keywords, which are checked against the job title, the company name ("Spring Health"), and how the posting describes the company in its opening lines ("FreedomCare is a healthcare company").
 
@@ -151,6 +151,28 @@ python3 tools/add_companies.py --file my_companies.txt           # one name per 
 ```
 
 `import_tracker.py` also records every job already in your tracker so they never show up as new.
+
+**Starting with no list, or want companies you've never heard of?** Let the pipeline find them:
+
+```bash
+python3 tools/discover_companies.py              # find boards, check them, add companies with matching jobs
+python3 tools/discover_companies.py --dry-run    # same, but only reports what it would add
+```
+
+It reads the index of [Common Crawl](https://commoncrawl.org), a free public archive of the web, to find
+Greenhouse, Lever and Ashby job boards (tens of thousands of them). It then reads each board's current jobs once
+and adds every company with at least one job that passes your title, location and industry rules, with its board
+already filled in. The setup wizard offers this when your list is short.
+
+- The first run is slow, often an hour or more, because the index is large. Ctrl+C is safe: run the same command
+  again and it continues where it stopped. `--max-pages 20` makes a quicker, partial first pass.
+- Run it again about once a month. Boards that had no match are checked again after 30 days
+  (`--recheck-days`), so companies that start hiring for your titles get added.
+- Lever and Ashby don't report a company name, so those companies are named from their board name (for example
+  "Zeta Labs") and marked `unverified`. Fix any odd names in `config/companies.json`.
+- Progress is saved in `data/discovery/`, which isn't uploaded to git.
+- It only finds companies on Greenhouse, Lever and Ashby. Companies on Workday and other systems still come from
+  your tracker or `add_companies.py`.
 
 **Large employers on Workday (optional):** open any of their job postings. If the address contains `myworkdayjobs.com`, add the company to `config/workday_seeds.json`:
 
@@ -265,6 +287,7 @@ tools/
   migrate_tracker.py    Copies an existing tracker (any layout) into the template
   import_tracker.py     Reads your tracker: skip tracked jobs, add new companies
   add_companies.py      Adds companies by name
+  discover_companies.py Finds Greenhouse, Lever and Ashby companies with jobs matching your titles
   add_to_tracker.py     Adds every qualifying job to your Excel or Google Sheets tracker (Status New)
   tracker_io.py         Reads and writes Excel, CSV and Google Sheets trackers
   export_shortlist.py   Shortlist as a tracker-ready CSV
@@ -281,7 +304,7 @@ data/jobs.db            Your collected jobs (local only, never uploaded)
 ## Known limits
 
 - US job searches only. Jobs located outside the US are dropped.
-- Only companies on your list are searched.
+- Only companies on your list are searched. `tools/discover_companies.py` fills the list with Greenhouse, Lever and Ashby companies that have matching jobs.
 - Board names are guessed from company names. Unusual names may need a manual entry in `companies.json` (`"ats": "greenhouse", "token": "boardname"`).
 - Salary is read from the posting text when the board has no pay field. Ranges that combine several locations or levels should be checked.
 - LinkedIn, Indeed, Built In and similar sites are not searched.
@@ -299,7 +322,7 @@ data/jobs.db            Your collected jobs (local only, never uploaded)
 | `The Google Sheets API isn't turned on` | Enable the Google Sheets API in the same Google Cloud project as the key (step 1). Changes can take a few minutes. |
 | `no such table: jobs` | Run `python3 init_db.py` first. |
 | A wrong company's jobs appear | Remove that company's `ats` and `token` in `config/companies.json`, or add it to `excluded_companies`. |
-| Too few jobs | Check the report's "Excluded, by reason" table. Add companies, loosen `excluded_title_words`, or set more `accept` options to `true`. `python3 collectors/collect.py --debug` shows every decision. |
+| Too few jobs | Check the report's "Excluded, by reason" table. Run `python3 tools/discover_companies.py`, add companies, loosen `excluded_title_words`, or set more `accept` options to `true`. `python3 collectors/collect.py --debug` shows every decision. |
 | Too many jobs | Raise `gate_min` or `floor_high_end`, or narrow `titles`. |
 
 ## What's new

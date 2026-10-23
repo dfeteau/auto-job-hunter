@@ -26,7 +26,7 @@ need for the task: their tracker, resume, or `reports/report_YYYY-MM-DD.md`.
    column matches, run it, then `python3 tools/import_tracker.py`), which carries
    over their history and fills the company list. Then run `python3 setup_wizard.py` (it asks whether the tracker
    is Excel, Google Sheets or CSV), add dream companies with
-   `tools/add_companies.py`, and run `init_db.py` and `collectors/find_boards.py`.
+   `tools/add_companies.py` (and, if the list is short, find more with `tools/discover_companies.py`), and run `init_db.py` and `collectors/find_boards.py`.
 2. **Daily:** they run `python3 run_daily.py`. Read the report, then add every qualifying job with
    `python3 tools/add_to_tracker.py` (no per-job approval). Fill in Resume Match
    (0 to 100, required qualifications weighted most, never invent experience) and a line or two in Assistant

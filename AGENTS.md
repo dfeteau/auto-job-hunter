@@ -69,7 +69,11 @@ Go one step at a time and confirm before moving on. Keep questions short.
    keep (remote, hybrid nearby, onsite nearby, hybrid elsewhere, onsite elsewhere), minimum salary for a
    commute, lowest salary they'd consider, target salary, top skills, and the shortlist's minimum Fit Score
    (50 is a good default). Show them the summary before saving.
-5. **More companies.** Ask for 10 to 30 companies they'd love to work for that aren't in their tracker yet:
+5. **More companies.** If their list is short (or empty), offer `python3 tools/discover_companies.py`: it finds
+   Greenhouse, Lever and Ashby boards in the Common Crawl index and adds companies that currently have a job
+   passing their rules. The first run can take an hour or more and is safe to stop and restart; `--dry-run`
+   reports without changing anything. Lever and Ashby names come from the board name, so glance at those.
+   Also ask for 10 to 30 companies they'd love to work for that aren't in their tracker yet:
    `python3 tools/add_companies.py "Company A" "Company B"`.
 6. **Large employers on Workday (optional).** For big companies, ask them to open one of the company's job
    postings. If the address contains `myworkdayjobs.com`, add it to `config/workday_seeds.json` as
@@ -175,6 +179,7 @@ and run `find_boards.py`, so future postings there are found automatically.
 | `tools/migrate_tracker.py` | Copies an existing tracker into the template |
 | `tools/import_tracker.py` | Reads the tracker: fills `seen.json`, adds companies |
 | `tools/add_companies.py` | Adds companies by name |
+| `tools/discover_companies.py` | Finds Greenhouse, Lever and Ashby companies with jobs matching their criteria (Common Crawl index, then a live check) |
 | `tools/add_to_tracker.py` | Adds every qualifying job to an Excel or Google Sheets tracker (Status New), then updates `seen.json` |
 | `tools/tracker_io.py` | Reads and writes Excel, CSV and Google Sheets trackers |
 | `tools/export_shortlist.py` | Shortlist as tracker-ready CSV rows (for CSV trackers) |
@@ -186,7 +191,8 @@ and run `find_boards.py`, so future postings there are found automatically.
 
 ## Troubleshooting
 
-- **Few or no jobs:** check "Excluded, by reason" in the report. Too few companies on the list, strict title
+- **Few or no jobs:** check "Excluded, by reason" in the report. Too few companies on the list (run
+  `tools/discover_companies.py`), strict title
   exclusions, or `accept` options set to `false` are the usual causes. `collect.py --debug` shows each decision.
 - **A company keeps showing "not found":** it may use a career site this project doesn't cover (iCIMS, Taleo,
   Oracle, SuccessFactors). Those are checked by hand.

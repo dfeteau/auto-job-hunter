@@ -5,7 +5,7 @@ Usage: python3 setup_wizard.py            (everything)
 Press Enter to accept the suggestion in [brackets]. Run it again any time to start over;
 your previous settings are saved to config/profile.backup.json first.
 """
-import json, pathlib, re, shutil, sys
+import json, pathlib, re, shutil, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CFG = ROOT / "config"
@@ -219,6 +219,24 @@ def setup_tracker():
           + (f", tab '{tmap['sheet']}'" if tmap.get("sheet") else "") + ".")
     print("Next: python3 tools/import_tracker.py  (reads your tracker; README.md, step 4)")
 
+def offer_discovery():
+    """When the company list is short, offer to find companies with matching jobs (tools/discover_companies.py)."""
+    try:
+        boards = sum(1 for c in json.loads((CFG / "companies.json").read_text())["companies"] if c.get("ats"))
+    except Exception:
+        boards = 0
+    if boards >= 25: return
+    section("8. Find companies")
+    print(f"   Your company list has {boards} companies with a known job board. The pipeline only searches")
+    print("   companies on that list, so it can look for you: it finds Greenhouse, Lever and Ashby job boards in a")
+    print("   free public web archive and adds every company that has a job matching your titles right now.")
+    print("   The first run can take an hour or more. Ctrl+C stops it safely, and running it again continues.")
+    print("   (Bringing in a tracker first? You can still do this now; companies already listed are skipped.)")
+    if ask_yes("Find companies now?", True):
+        subprocess.run([sys.executable, str(ROOT / "tools" / "discover_companies.py")], cwd=ROOT)
+    else:
+        print("   Any time later: python3 tools/discover_companies.py")
+
 def main():
     if "--tracker" in sys.argv:
         setup_tracker(); return
@@ -333,6 +351,7 @@ def main():
         setup_tracker()
     else:
         print("Next: python3 setup_wizard.py --tracker, then build your company list (README.md, steps 3 and 4).")
+    offer_discovery()
 
 if __name__ == "__main__":
     try:

@@ -3,6 +3,12 @@
 Notable changes to auto-job-hunter, newest first. If you made your own copy from the template,
 compare this list with your copy to see what's new. Full history is on the Commits page on GitHub.
 
+## 1.7.0 (2026-10-23)
+
+### Added
+- **Find companies automatically** (`tools/discover_companies.py`). Reads the Common Crawl index (a free public archive of the web) to find Greenhouse, Lever and Ashby job boards, checks each board's current jobs once, and adds every company with a job that passes your title, location and industry rules, board included. Safe to stop and restart; `--dry-run` reports without changing anything; boards without a match are rechecked after 30 days, so a monthly run finds companies that start hiring. Why: the pipeline only searches companies on your list, and people starting from scratch had no list at all.
+- The setup wizard offers to find companies when your list has fewer than 25 companies with a job board.
+
 ## 1.6.0 (2026-10-23)
 
 ### Added
