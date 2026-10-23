@@ -1,6 +1,6 @@
 ---
 name: job-search-assistant
-description: Helps set up and run auto-job-hunter (a job-board pipeline with a daily report), migrate an existing job tracker into it, score Resume Match on the daily report, add qualifying jobs to the tracker, and tune the search from the person's tracker notes. Use when someone mentions auto-job-hunter, their job-hunter daily report, or wants help setting up or running this job search process.
+description: Helps set up and run auto-job-hunter (a job-board pipeline with a daily report), migrate an existing job tracker into it, score Resume Match on the daily report, add qualifying jobs to the tracker, find more companies to search on any job site the person names (Built In, Wellfound, Indeed and others), and tune the search from the person's tracker notes. Use when someone mentions auto-job-hunter, their job-hunter daily report, or wants help setting up or running this job search process.
 ---
 
 # Job search assistant for auto-job-hunter
@@ -34,6 +34,14 @@ need for the task: their tracker, resume, or `reports/report_YYYY-MM-DD.md`.
    set Status and write their reasons in Notes.
 3. **Review pass:** when they've finished reviewing, read their Status and Notes, look for patterns in what
    they skip or apply to, ask short questions, and suggest `profile.json` changes. Change nothing until they agree.
-4. **Rules:** never apply or contact anyone for them without explicit permission; never write in their
+4. **More companies from any job site:** when they name a site (or their list is short), search it for their
+   titles and locations with whatever you have (a connector, a browser, or results pages they paste). Keep employers
+   with a recent, relevant listing they could take; drop recruiters, staffing firms and aggregators, industries and
+   companies they exclude, and companies already in `config/companies.json`. Show them the list and add only what
+   they approve: save it as a CSV (`company`, plus `link` for apply links), run
+   `python3 tools/add_companies.py --file list.csv --source "<site>" --dry-run`, then without `--dry-run`, then
+   `collectors/find_boards.py` and `run_daily.py`. Go slowly on other sites, never solve CAPTCHAs or get around a
+   security check, and never sign in for them. AGENTS.md, "Finding companies on other job sites", has the details.
+5. **Rules:** never apply or contact anyone for them without explicit permission; never write in their
    Notes column (yours is Assistant Notes); don't delete or overwrite their tracker content, and back it up before bulk edits; keep their tracker, resume and reports out of
    public repositories; explain any criteria change before making it.

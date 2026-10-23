@@ -3,6 +3,15 @@
 Notable changes to auto-job-hunter, newest first. If you made your own copy from the template,
 compare this list with your copy to see what's new. Full history is on the Commits page on GitHub.
 
+## 1.8.0 (2026-10-23)
+
+### Added
+- **Find companies on any job site, with an AI assistant.** A new section in AGENTS.md (and the Claude skill) walks your assistant through collecting employers from a site you choose (Built In, Wellfound, Indeed, Dice, ZipRecruiter, a city or industry job board): search your titles and locations, keep employers with a recent listing you could take, drop recruiters, staffing firms, excluded industries and companies you already have, show you the list for approval, then add it. It also covers being a good guest: go slowly, stop at any security check instead of getting around it, and never sign in for you. README Step 4 describes it for people. Why: the pipeline only searches companies on your list, and job sites are where most people discover employers.
+- **`add_companies.py` reads lists from job sites.** `--file` now takes a CSV with a `company` column as well as a plain list. An optional `link` column with an apply link (Greenhouse, Lever, Ashby, SmartRecruiters, Workable or Workday) fills in that company's job board directly, with no guessing, including for companies already on your list that had no board yet. `--source "Site name"` records where each company came from (`discovered_via`). `--dry-run` shows what would be added, skipped and filled in.
+
+### Changed
+- `add_companies.py` now skips recruiters, staffing firms and aggregators, your `excluded_companies`, and names containing one of your `excluded_industry_words`, and lists names that look like companies you already have so you can check for duplicates.
+
 ## 1.7.0 (2026-10-23)
 
 ### Added
