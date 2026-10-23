@@ -1,15 +1,15 @@
 """Save today's shortlist as a CSV in the template tracker's column order, ready to paste into your tracker.
-For an .xlsx tracker, tools/add_to_tracker.py adds the rows for you.
+For an Excel or Google Sheets tracker, tools/add_to_tracker.py adds the rows for you.
 Usage: python3 tools/export_shortlist.py      -> exports/shortlist_YYYY-MM-DD.csv
 """
 import csv, datetime, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "collectors"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "scoring"))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import common
 from score import shortlist
 
-COLUMNS = ["Date Added", "Company", "Job Title", "Location", "Work Type", "Salary Range", "Salary Min", "Source", "Link",
-           "Date Applied", "Status", "Resume Match", "Fit Score", "Notes", "Assistant Notes"]
+from tracker_io import TEMPLATE_COLUMNS as COLUMNS
 WORK_TYPE = {"remote": "Remote", "hybrid_home": "Hybrid - Home Metro", "onsite_home": "Onsite - Home Metro",
              "hybrid_other": "Hybrid - Other", "onsite_other": "Onsite - Other"}
 

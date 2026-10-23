@@ -52,12 +52,17 @@ Go one step at a time and confirm before moving on. Keep questions short.
      - If you can't run commands: read their file and produce rows in the template's columns (below), mapping
        statuses with the table below and keeping their original status text in Assistant Notes when you had to guess.
        Ask them to paste the rows into a copy of `templates/job_tracker_template.xlsx`.
-     - Then: `python3 tools/import_tracker.py tracker/my_job_tracker.xlsx`. This records every job they've
+     - Then: `python3 tools/import_tracker.py`. This records every job they've
        already seen (so it's never suggested again) and adds every company to `config/companies.json`.
    - **They'd rather keep their own tracker as is:** that works too. Edit `config/tracker_map.json` so
-     `company`, `title`, `status` and `link` name their exact column headers, then run `import_tracker.py` on
-     their file. Their tracker needs at least a company column and a job title column.
-   - **They don't have one:** copy `templates/job_tracker_template.xlsx` to `tracker/my_job_tracker.xlsx`.
+     `company`, `title`, `status` and `link` name their exact column headers (the wizard asks for them), then run
+     `import_tracker.py`. Their tracker needs at least a company column and a job title column.
+   - **They don't have one:** `python3 setup_wizard.py --tracker` creates `tracker/my_job_tracker.xlsx` from the
+     template, or adds the template headers to an empty Google Sheet.
+   - **Excel, Google Sheets or CSV:** ask which they use. `python3 setup_wizard.py --tracker` records it in
+     `config/tracker_map.json`; after that the tools need no path. Google Sheets needs a one-time service account
+     (README.md, "Using Google Sheets"); walk them through it and never ask them to paste the key file's contents
+     into the chat. CSV trackers are read only; use `tools/export_shortlist.py` for new rows.
 4. **Criteria.** Run `python3 setup_wizard.py` with them, or ask its questions yourself and write
    `config/profile.json`: job titles (most wanted first), title words that rule a job out, industries and
    companies to avoid, whether they hold a security clearance, home city and nearby cities, which job types to
@@ -88,7 +93,7 @@ Everything that qualifies goes into the tracker, and they review it there at the
      dropped as "Onsite in home area"), point it out and offer the matching `profile.json` change.
      "Excluded industry word" means one of their `excluded_industry_words` appeared in the title, the company
      name, or the posting's opening description of the employer ("X is a healthcare company").
-3. **Add every qualifying job:** `python3 tools/add_to_tracker.py tracker/my_job_tracker.xlsx`. It backs up
+3. **Add every qualifying job:** `python3 tools/add_to_tracker.py` (Excel or Google Sheets). It backs up
    the tracker, adds each job with Status `New`, and updates `seen.json` so they aren't suggested again.
 4. **Score and annotate the new rows:** fill in Resume Match (next section) and write one or two lines in
    **Assistant Notes**: best overlap, biggest gap, and anything to check (flags such as `salary unknown`,
@@ -163,14 +168,15 @@ and run `find_boards.py`, so future postings there are found automatically.
 |---|---|
 | `setup_wizard.py` | Asks their criteria, writes `config/profile.json` |
 | `config/profile.json` | Criteria: titles, exclusions, location, salary, scoring |
-| `config/tracker_map.json` | Which tracker columns hold company, title, status, link |
+| `config/tracker_map.json` | Where the tracker is (Excel, Google Sheets or CSV), its tab, and which columns hold company, title, status, link |
 | `config/companies.json` | Companies to search and their job boards (built by the tools) |
 | `config/workday_seeds.json` | Workday career-site addresses to verify |
 | `config/seen.json` | Jobs already in their tracker (built by `import_tracker.py`) |
 | `tools/migrate_tracker.py` | Copies an existing tracker into the template |
 | `tools/import_tracker.py` | Reads the tracker: fills `seen.json`, adds companies |
 | `tools/add_companies.py` | Adds companies by name |
-| `tools/add_to_tracker.py` | Adds every qualifying job to an .xlsx tracker (Status New), then updates `seen.json` |
+| `tools/add_to_tracker.py` | Adds every qualifying job to an Excel or Google Sheets tracker (Status New), then updates `seen.json` |
+| `tools/tracker_io.py` | Reads and writes Excel, CSV and Google Sheets trackers |
 | `tools/export_shortlist.py` | Shortlist as tracker-ready CSV rows (for CSV trackers) |
 | `collectors/find_boards.py`, `find_workday.py` | Find each company's job board |
 | `collectors/collect.py` | Pull jobs from every known board (`--debug` shows every decision) |
@@ -186,3 +192,4 @@ and run `find_boards.py`, so future postings there are found automatically.
   Oracle, SuccessFactors). Those are checked by hand.
 - **The wrong company's jobs appear:** remove that company's `ats` and `token` in `config/companies.json`.
 - **`No module named openpyxl`:** `pip3 install openpyxl`, or save the tracker as CSV.
+- **Google Sheets errors:** README.md, Troubleshooting, covers the package, key file, sharing and API messages.

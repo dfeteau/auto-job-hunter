@@ -83,7 +83,10 @@ def main():
     for r in shortlist:
         print(f"  {r['fit']} | {r['company']} | {r['title']} | {money(r['smin'], r['smax'])}")
     print(f"\nReport saved: {path}")
-    if shortlist: print("Next: python3 tools/add_to_tracker.py tracker/my_job_tracker.xlsx  (adds these to your tracker)")
+    if shortlist:
+        src_type = (common.load("tracker_map.json").get("source") or {}).get("type")
+        if src_type == "csv": print("Next: python3 tools/export_shortlist.py  (rows to paste into your CSV tracker)")
+        else: print("Next: python3 tools/add_to_tracker.py  (adds these to your tracker)")
 
 if __name__ == "__main__":
     main()

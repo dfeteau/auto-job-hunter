@@ -3,6 +3,16 @@
 Notable changes to auto-job-hunter, newest first. If you made your own copy from the template,
 compare this list with your copy to see what's new. Full history is on the Commits page on GitHub.
 
+## 1.6.0 (2026-10-23)
+
+### Added
+- **Google Sheets trackers.** Your tracker can now be an Excel file, a Google Sheet, or a CSV file. `add_to_tracker.py` writes new jobs straight into a Google Sheet (dates as dates, a clickable Link, flags in Assistant Notes, your Notes untouched), and `import_tracker.py` reads it. Before each change a CSV copy is saved in `tracker/backups/`. Setup uses a Google service account; README.md, "Using Google Sheets", walks through it. Needs `pip3 install gspread`. Why: many people keep their tracker in Google Sheets rather than Excel.
+- **Tracker step in the setup wizard.** The wizard asks whether you use Excel, Google Sheets or CSV and sets that up: it can create a tracker from the template, test the Google connection, add the template headers to an empty sheet, and ask for your column names when it can't find them. Run only this part with `python3 setup_wizard.py --tracker`.
+
+### Changed
+- `config/tracker_map.json` now also records where your tracker is (`source`). `import_tracker.py` and `add_to_tracker.py` use it, so they no longer need a path (a path or Google Sheets link still works and takes priority). Existing setups keep working: with no `source`, the tools use `tracker/my_job_tracker.xlsx` as before.
+- `run_daily.py` suggests the right next command for your tracker type.
+
 ## 1.5.0 (2026-10-22)
 
 ### Added

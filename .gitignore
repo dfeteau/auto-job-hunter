@@ -8,4 +8,6 @@ data/run_stats/
 reports/*
 !reports/.gitkeep
 tracker/
+config/google_service_account.json
+config/*service_account*.json
 *.xlsx.bak

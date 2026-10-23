@@ -1,13 +1,19 @@
-"""Setup wizard: answers a few questions and writes config/profile.json for you.
-Usage: python3 setup_wizard.py
+"""Setup wizard: answers a few questions and writes config/profile.json and config/tracker_map.json for you.
+Usage: python3 setup_wizard.py            (everything)
+       python3 setup_wizard.py --tracker  (only the tracker: Excel, Google Sheets or CSV)
 
 Press Enter to accept the suggestion in [brackets]. Run it again any time to start over;
 your previous settings are saved to config/profile.backup.json first.
 """
-import json, pathlib, re, sys
+import json, pathlib, re, shutil, sys
 
-CFG = pathlib.Path(__file__).resolve().parent / "config"
+ROOT = pathlib.Path(__file__).resolve().parent
+CFG = ROOT / "config"
 PROFILE = CFG / "profile.json"
+sys.path.insert(0, str(ROOT / "tools")); sys.path.insert(0, str(ROOT / "collectors"))
+import tracker_io
+TEMPLATE = ROOT / "templates" / "job_tracker_template.xlsx"
+TEMPLATE_MAP = {"company": "Company", "title": "Job Title", "status": "Status", "link": "Link"}
 
 STATES = {"AL": "alabama", "AK": "alaska", "AZ": "arizona", "AR": "arkansas", "CA": "california", "CO": "colorado",
           "CT": "connecticut", "DE": "delaware", "DC": "district of columbia", "FL": "florida", "GA": "georgia",
@@ -71,15 +77,153 @@ def ask_int(question, default, lo, hi):
         if raw.isdigit() and lo <= int(raw) <= hi: return int(raw)
         print(f"   Please enter a number from {lo} to {hi}.")
 
+def ask_choice(question, options, default=1):
+    for i, o in enumerate(options, 1): print(f"   {i}. {o}")
+    while True:
+        raw = ask(question, str(default))
+        if raw.isdigit() and 1 <= int(raw) <= len(options): return int(raw)
+        print(f"   Please enter a number from 1 to {len(options)}.")
+
 def round5k(x):
     return int(round(x / 5000.0) * 5000)
 
 def section(title):
     print(f"\n=== {title} ===")
 
+# ---------- tracker ----------
+
+def check_headers(tracker, tmap, can_add_headers=False):
+    """Reads the tracker and confirms the company and title columns can be found. Returns True when they can."""
+    try:
+        grid = [[v for v, _ in row] for row in tracker.grid()]
+    except SystemExit as e:
+        print(f"   {e}"); return False
+    if not any(str(v or "").strip() for row in grid for v in row):
+        if can_add_headers and ask_yes("   This tab is empty. Add the template's column headers to row 1?", True):
+            try:
+                tracker.write_headers()
+            except SystemExit as e:
+                print(f"   {e}"); return False
+            tmap["columns"] = dict(TEMPLATE_MAP); tracker.cols = tmap["columns"]
+            print("   Added: " + ", ".join(tracker_io.TEMPLATE_COLUMNS) + ".")
+            return True
+        print("   The tracker is empty. Add a header row with at least a company column and a job title column.")
+        return False
+    for attempt in (1, 2):
+        try:
+            hr, _ = tracker_io.find_header(grid, tmap["columns"])
+            jobs = sum(1 for row in grid[hr + 1:] if any(str(v or "").strip() for v in row))
+            print(f"   Tracker read. Headers are in row {hr + 1}, "
+                  + (f"with {jobs} row{'s' if jobs != 1 else ''} below them." if jobs else "with no jobs yet."))
+            return True
+        except SystemExit:
+            if attempt == 2: break
+            print(f"   Couldn't find the columns '{tmap['columns']['company']}' and '{tmap['columns']['title']}'.")
+            if not ask_yes("   Tell me your column names now?", True): break
+            cols = tmap["columns"]
+            cols["company"] = ask("   Header of the company column", cols.get("company"))
+            cols["title"] = ask("   Header of the job title column", cols.get("title"))
+            cols["status"] = ask("   Header of the status column", cols.get("status"))
+            cols["link"] = ask("   Header of the job link column", cols.get("link"))
+            tracker.cols = cols
+    print("   You can fix the column names later in config/tracker_map.json.")
+    return False
+
+def tracker_excel(tmap, src):
+    path = ask("Path to your tracker file", src.get("path") if src.get("type") == "excel" else tracker_io.DEFAULT_EXCEL,
+               "A path inside this project folder (like tracker/my_job_tracker.xlsx) or a full path.")
+    p = tracker_io.resolve(path)
+    tab = None
+    if not p.exists():
+        print("   That file doesn't exist yet.")
+        if ask_yes("   Start a new tracker there from the template?", True):
+            p.parent.mkdir(parents=True, exist_ok=True); shutil.copy(TEMPLATE, p)
+            tmap["columns"] = dict(TEMPLATE_MAP)
+            print(f"   Created {p}. Its second tab explains each column.")
+        else:
+            print("   Have a tracker in another layout? tools/migrate_tracker.py copies it into the template "
+                  "(README.md, step 3). Then run python3 setup_wizard.py --tracker again.")
+    else:
+        tab = ask("Tab name (press Enter for the first tab)", tmap.get("sheet") or "") or None
+    tmap["sheet"] = tab
+    if p.exists():
+        try:
+            import openpyxl  # noqa: F401
+            check_headers(tracker_io.ExcelTracker(p, tab, tmap["columns"]), tmap)
+        except ImportError:
+            print("   Reading Excel files needs one package: pip3 install openpyxl")
+    return {"type": "excel", "path": path}
+
+def tracker_google(tmap, src):
+    print("   One-time Google setup (about 10 minutes; README.md, \"Using Google Sheets\", has every click):")
+    print("     1. In Google Cloud Console, create a project and turn on the Google Sheets API.")
+    print("     2. Create a service account, add a JSON key, and save the downloaded key file in this")
+    print("        project's config folder as google_service_account.json (it stays out of git).")
+    print("     3. Open your Google Sheet, click Share, and add the service account's email as an Editor.")
+    print("   Starting fresh? Create a blank Google Sheet; the wizard can add the column headers for you.")
+    print("   Moving from Excel? In Google Sheets use File > Import, then point the wizard at the new sheet.")
+    try:
+        import gspread  # noqa: F401
+        have_pkg = True
+    except ImportError:
+        have_pkg = False
+        print("   You'll also need one package: pip3 install gspread")
+    creds = ask("Path to your service account key file",
+                src.get("credentials") if src.get("type") == "google_sheets" else tracker_io.DEFAULT_CREDENTIALS)
+    cp = tracker_io.resolve(creds)
+    if cp.exists():
+        try:
+            email = json.loads(cp.read_text()).get("client_email")
+        except Exception:
+            email = None
+        if email: print(f"   Share your Google Sheet with {email} as an Editor.")
+        else: print("   That file doesn't look like a service account key (no client_email). Check step 2.")
+    else:
+        print("   That file isn't there yet. You can finish now and test later with: python3 setup_wizard.py --tracker")
+    while True:
+        url = ask("Your Google Sheet's link (copy it from the browser address bar)",
+                  src.get("url") if src.get("type") == "google_sheets" else "")
+        if tracker_io.is_sheets_link(url) or re.fullmatch(r"[A-Za-z0-9_-]{25,}", url): break
+        print("   Please paste the full link. It contains /spreadsheets/d/.")
+    tab = ask("Tab name (press Enter for the first tab)", tmap.get("sheet") or "") or None
+    tmap["sheet"] = tab
+    if have_pkg and cp.exists() and ask_yes("Test the connection now?", True):
+        check_headers(tracker_io.GoogleSheetsTracker(url, tab, tmap["columns"], creds), tmap, can_add_headers=True)
+    return {"type": "google_sheets", "url": url, "credentials": creds}
+
+def tracker_csv(tmap, src):
+    path = ask("Path to your CSV tracker", src.get("path") if src.get("type") == "csv" else "tracker/my_job_tracker.csv")
+    p = tracker_io.resolve(path)
+    tmap["sheet"] = None
+    if p.exists(): check_headers(tracker_io.CsvTracker(p, None, tmap["columns"]), tmap)
+    else: print(f"   {p} doesn't exist yet. Export your tracker as CSV and save it there.")
+    print("   The pipeline reads CSV trackers but doesn't write them. Each day, tools/export_shortlist.py")
+    print("   saves the new jobs as rows you can paste in.")
+    return {"type": "csv", "path": path}
+
+def setup_tracker():
+    section("7. Your tracker")
+    print("   Your tracker is the spreadsheet where you log applications. The pipeline reads it so jobs you")
+    print("   already track never come back, and adds each day's qualifying jobs to it.")
+    tmap = tracker_io.load_map()
+    tmap.setdefault("columns", dict(TEMPLATE_MAP))
+    src = tmap.get("source") or {}
+    kinds = ["excel", "google_sheets", "csv"]
+    choice = ask_choice("Which do you use?", ["Excel (an .xlsx file on this computer)", "Google Sheets",
+                        "A CSV file (exported from Notion, Airtable or similar)"],
+                        kinds.index(src["type"]) + 1 if src.get("type") in kinds else 1)
+    src = [tracker_excel, tracker_google, tracker_csv][choice - 1](tmap, src)
+    tmap["source"] = src
+    tracker_io.save_map(tmap)
+    print(f"\nSaved to {CFG / 'tracker_map.json'}: {tracker_io.describe_source(src)}"
+          + (f", tab '{tmap['sheet']}'" if tmap.get("sheet") else "") + ".")
+    print("Next: python3 tools/import_tracker.py  (reads your tracker; README.md, step 4)")
+
 def main():
+    if "--tracker" in sys.argv:
+        setup_tracker(); return
     print(__doc__.split("\n")[0])
-    print("This takes about 3 minutes. Answers can be changed later in config/profile.json.")
+    print("This takes about 5 minutes. Answers can be changed later in config/profile.json and config/tracker_map.json.")
 
     section("1. Job titles")
     titles = ask_list("Job titles to search for (comma-separated, most wanted first)", "",
@@ -185,7 +329,10 @@ def main():
         (CFG / "profile.backup.json").write_text(PROFILE.read_text())
     PROFILE.write_text(json.dumps(profile, indent=2) + "\n")
     print(f"\nSaved to {PROFILE}.")
-    print("Next: set up your tracker and company list (README.md, steps 3 and 4).")
+    if ask_yes("\nSet up your tracker now (Excel, Google Sheets or CSV)?", True):
+        setup_tracker()
+    else:
+        print("Next: python3 setup_wizard.py --tracker, then build your company list (README.md, steps 3 and 4).")
 
 if __name__ == "__main__":
     try:

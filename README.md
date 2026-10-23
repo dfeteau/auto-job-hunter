@@ -17,6 +17,7 @@ Everything runs on your own computer. Nothing is sent anywhere except requests t
 - A Mac, Windows or Linux computer
 - **Python 3.10 or newer.** Check by opening Terminal (Mac) or Command Prompt (Windows) and typing `python3 --version` (on Windows, `python --version`). If it's missing, install it from [python.org](https://www.python.org/downloads/).
 - A GitHub account if you want your own copy online (optional)
+- A Google account, only if your tracker is a Google Sheet
 
 ### Step 1. Get your own copy
 
@@ -37,7 +38,7 @@ Run the setup wizard:
 python3 setup_wizard.py
 ```
 
-It asks about 15 questions (job titles, words to exclude, industries and companies to avoid, your home city and nearby cities, which kinds of remote, hybrid and onsite jobs to keep, your lowest and target salary, your top skills, and how strict the shortlist should be), shows a summary, and writes `config/profile.json`. Press Enter to accept a suggestion. Run it again any time; your previous settings are saved to `config/profile.backup.json`.
+It asks about 15 questions (job titles, words to exclude, industries and companies to avoid, your home city and nearby cities, which kinds of remote, hybrid and onsite jobs to keep, your lowest and target salary, your top skills, and how strict the shortlist should be), shows a summary, and writes `config/profile.json`. Press Enter to accept a suggestion. Run it again any time; your previous settings are saved to `config/profile.backup.json`. At the end it offers to set up your tracker (step 3).
 
 Industry shortcuts you can type: healthcare, pharma, defense, government, gambling, crypto, insurance. Each expands to a set of keywords, which are checked against the job title, the company name ("Spring Health"), and how the posting describes the company in its opening lines ("FreedomCare is a healthcare company").
 
@@ -68,36 +69,83 @@ With the example settings, a remote job paying $130K+ scores 100, a remote job w
 
 ### Step 3. Set up your tracker
 
-**Already tracking your applications somewhere?** Bring it over, so your history and every company in it are
-included from day one:
+Your tracker is the spreadsheet where you log applications. It can be an **Excel file**, a **Google Sheet**, or a
+**CSV file**. The setup wizard asks which one you use and sets it up. It offers this at the end of step 2, or you
+can run just this part any time:
 
 ```bash
-python3 tools/migrate_tracker.py ~/path/to/your_tracker.xlsx --dry-run   # shows how your columns will be matched
-python3 tools/migrate_tracker.py ~/path/to/your_tracker.xlsx             # creates tracker/my_job_tracker.xlsx
+python3 setup_wizard.py --tracker
 ```
 
-It matches common column names automatically ("Employer", "Position", "Applied On", "URL", "Stage" and so on),
-standardizes statuses (keeping your original wording in Notes when it had to guess), converts dates, keeps
-links, and copies any extra columns to the right of Notes. A CSV export works too (Google Sheets, Notion,
-Airtable, Excel). Your original file is never changed. Use `--sheet "Tab name"` if your tracker isn't on the
-first tab.
+Your answers are saved in `config/tracker_map.json` (where the tracker is, which tab, and your column names).
+After that, every tool uses your tracker without being told where it is.
 
-**Prefer to keep your own tracker as it is?** Open `config/tracker_map.json` and put your column headers next to
-`company`, `title`, `status` and `link`. Set `sheet` to the tab name if it isn't the first tab.
+**Excel**
 
-**Starting fresh?** Copy `templates/job_tracker_template.xlsx` to `tracker/my_job_tracker.xlsx`. Its second tab
-explains each column.
+- **Starting fresh?** The wizard creates `tracker/my_job_tracker.xlsx` from the template. Its second tab explains
+  each column.
+- **Already tracking your applications?** Bring them over, so your history and every company in it are included
+  from day one:
+
+  ```bash
+  python3 tools/migrate_tracker.py ~/path/to/your_tracker.xlsx --dry-run   # shows how your columns will be matched
+  python3 tools/migrate_tracker.py ~/path/to/your_tracker.xlsx             # creates tracker/my_job_tracker.xlsx
+  ```
+
+  It matches common column names automatically ("Employer", "Position", "Applied On", "URL", "Stage" and so on),
+  standardizes statuses (keeping your original wording in Assistant Notes when it had to guess), converts dates,
+  keeps links, and copies any extra columns to the right. A CSV export works too. Your original file is never
+  changed. Use `--sheet "Tab name"` if your tracker isn't on the first tab.
+- **Prefer to keep your own tracker as it is?** Point the wizard at it. If it can't find "Company" and "Job Title"
+  headers, it asks for your column names.
+- Excel needs one package: `pip3 install openpyxl`.
+
+**Google Sheets:** see [Using Google Sheets](#using-google-sheets) below. About 10 minutes, once.
+
+**CSV** (for example an export from Notion or Airtable): the pipeline reads it to skip jobs you already track. It
+doesn't write CSV files, so each day `tools/export_shortlist.py` saves the new jobs as rows you can paste in.
 
 The `tracker/` folder is excluded from git, so your tracker isn't uploaded by accident.
 
-Reading `.xlsx` files needs one package: `pip3 install openpyxl`. CSV trackers need nothing extra.
+#### Using Google Sheets
+
+The pipeline signs in to Google with a **service account**: a robot Google account that can open only the sheets
+you share with it. You set it up once.
+
+1. **Create a Google Cloud project and turn on the Sheets API.**
+   - Go to [console.cloud.google.com](https://console.cloud.google.com) and sign in with your Google account.
+   - Click the project picker at the top, then **New Project**. Name it (for example `job-hunter`) and click **Create**.
+   - With that project selected, open **APIs & Services → Library**, search for **Google Sheets API**, and click
+     **Enable**.
+2. **Create a service account and download its key.**
+   - Open **APIs & Services → Credentials → Create credentials → Service account**. Give it a name and click
+     **Done** (the optional steps can be skipped).
+   - Click the new service account, open the **Keys** tab, then **Add key → Create new key → JSON**. A key file
+     downloads.
+   - Move that file into this project's `config` folder and rename it `google_service_account.json`. It's excluded
+     from git. Treat it like a password: anyone with it can edit the sheets you share with the service account.
+   - Some work or school Google accounts don't allow keys. If yours refuses, use a personal Google account.
+3. **Share your sheet with the service account.** Open the key file and copy the `client_email` value (it ends in
+   `iam.gserviceaccount.com`; the wizard also shows it). In your Google Sheet, click **Share**, paste it, choose
+   **Editor**, and send.
+4. **Install the package:** `pip3 install gspread`
+5. **Run the wizard:** `python3 setup_wizard.py --tracker`, choose **Google Sheets**, and paste your sheet's link
+   from the browser address bar. It tests the connection. If the tab is empty, it offers to add the template's
+   column headers.
+
+**Moving an Excel tracker to Google Sheets?** If it isn't in the template's layout yet, run `migrate_tracker.py`
+first (above). Then in Google Sheets choose **File → Import → Upload**, pick the `.xlsx`, and run the wizard.
+
+With a Google Sheet, `add_to_tracker.py` writes new rows straight into the sheet (dates as dates, a clickable
+Link). Before each change it saves a CSV copy in `tracker/backups/`, and Google keeps its own history under
+**File → Version history**.
 
 ### Step 4. Build your company list
 
 The pipeline searches only companies on your list. Add them any of these ways:
 
 ```bash
-python3 tools/import_tracker.py tracker/my_job_tracker.xlsx     # every company in your tracker
+python3 tools/import_tracker.py                                 # every company in your tracker
 python3 tools/add_companies.py "Acme Corp" "Globex"              # specific companies
 python3 tools/add_companies.py --file my_companies.txt           # one name per line
 ```
@@ -149,7 +197,7 @@ This collects from every known board, scores the results, and saves a report to 
 ```bash
 python3 collectors/collect.py         # pull new jobs from every known board (add --debug to see every decision)
 python3 scoring/score.py              # print the ranked shortlist (add --all to include jobs below your gate)
-python3 tools/add_to_tracker.py      # add every qualifying job to tracker/my_job_tracker.xlsx (Status New)
+python3 tools/add_to_tracker.py       # add every qualifying job to your tracker (Status New)
 python3 tools/export_shortlist.py     # CSV trackers: the shortlist in your tracker's format, in exports/
 ```
 
@@ -164,9 +212,9 @@ Flags you may see on a job:
 
 You don't pick jobs one by one before they're tracked. Everything that qualifies goes in, and you review it there.
 
-1. **Add every qualifying job:** `python3 tools/add_to_tracker.py tracker/my_job_tracker.xlsx` (or a path to
-   your own .xlsx tracker). It backs up your tracker to `tracker/backups/`, adds each job with Status New, and
-   updates the list of tracked jobs so they don't come back. CSV tracker? Use `tools/export_shortlist.py` and paste.
+1. **Add every qualifying job:** `python3 tools/add_to_tracker.py` (Excel or Google Sheets). It backs up your
+   tracker to `tracker/backups/`, adds each job with Status New, and updates the list of tracked jobs so they don't
+   come back. `--dry-run` shows what it would add. CSV tracker? Use `tools/export_shortlist.py` and paste.
 2. **Resume Match:** your assistant fills in Resume Match (0 to 100) and writes its reasoning and any flags in the
    **Assistant Notes** column. Without an assistant, [docs/RESUME_MATCH.md](docs/RESUME_MATCH.md) has a prompt to copy.
 3. **Review:** go through the New rows when it suits you. Set Status (Applied, Did Not Apply, Saved, ...) and
@@ -201,7 +249,7 @@ Edit `config/profile.json` and run `python3 scoring/score.py`. Scoring re-applie
 ```
 config/
   profile.json          Your criteria: titles, location, salary, scoring
-  tracker_map.json      Which tracker columns hold company, title, status, link
+  tracker_map.json      Where your tracker is (Excel, Google Sheets or CSV) and which columns hold each field
   companies.json        Companies to search and their job boards (built by the tools)
   workday_seeds.json    Workday career-site addresses to verify
   seen.json             Jobs already in your tracker (built by import_tracker.py)
@@ -217,11 +265,12 @@ tools/
   migrate_tracker.py    Copies an existing tracker (any layout) into the template
   import_tracker.py     Reads your tracker: skip tracked jobs, add new companies
   add_companies.py      Adds companies by name
-  add_to_tracker.py     Adds every qualifying job to your .xlsx tracker (Status New)
+  add_to_tracker.py     Adds every qualifying job to your Excel or Google Sheets tracker (Status New)
+  tracker_io.py         Reads and writes Excel, CSV and Google Sheets trackers
   export_shortlist.py   Shortlist as a tracker-ready CSV
 templates/              Blank tracker (.xlsx and .csv)
 docs/RESUME_MATCH.md    How to score the shortlist against your resume with Claude
-setup_wizard.py         Asks your criteria and writes config/profile.json
+setup_wizard.py         Asks your criteria and which tracker you use; writes config/profile.json and tracker_map.json
 AGENTS.md, CLAUDE.md    Guide for AI assistants (Claude, ChatGPT, Cursor and others)
 skills/                 Claude skill for this project
 run_daily.py            One-command daily run and report
@@ -243,7 +292,11 @@ data/jobs.db            Your collected jobs (local only, never uploaded)
 |---|---|
 | `command not found: python3` | Install Python from python.org, or use `python` on Windows. |
 | `No module named openpyxl` | `pip3 install openpyxl`, or save your tracker as CSV. |
-| `Could not find the 'Company' and 'Job Title' headers` | Update `config/tracker_map.json` with your exact header names. |
+| `Could not find the 'Company' and 'Job Title' headers` | Run `python3 setup_wizard.py --tracker` and enter your column names, or edit `config/tracker_map.json`. Check the tab name too. |
+| `Google Sheets needs one package` | `pip3 install gspread` |
+| `Google service account key not found` | Save the key file as `config/google_service_account.json` ([Using Google Sheets](#using-google-sheets), step 2). |
+| `Couldn't open the Google Sheet` | Share the sheet with the service account's email as an Editor (step 3), and check the link in `config/tracker_map.json`. |
+| `The Google Sheets API isn't turned on` | Enable the Google Sheets API in the same Google Cloud project as the key (step 1). Changes can take a few minutes. |
 | `no such table: jobs` | Run `python3 init_db.py` first. |
 | A wrong company's jobs appear | Remove that company's `ats` and `token` in `config/companies.json`, or add it to `excluded_companies`. |
 | Too few jobs | Check the report's "Excluded, by reason" table. Add companies, loosen `excluded_title_words`, or set more `accept` options to `true`. `python3 collectors/collect.py --debug` shows every decision. |

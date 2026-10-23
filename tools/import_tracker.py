@@ -1,31 +1,26 @@
 """Read your job tracker and update the pipeline's lists.
-Usage: python3 tools/import_tracker.py path/to/tracker.xlsx   (or a .csv)
+Usage: python3 tools/import_tracker.py                     (the tracker set up in config/tracker_map.json)
+       python3 tools/import_tracker.py path/to/tracker.xlsx (or a .csv file, or a Google Sheets link)
 
 - Rebuilds config/seen.json with every job in the tracker, so those jobs are never shown again.
 - Adds any company in the tracker that is not yet in config/companies.json.
   Run collectors/find_boards.py afterward to find job boards for the new companies.
 
 Column names come from config/tracker_map.json (defaults match the template tracker).
-Reading .xlsx needs openpyxl: pip3 install openpyxl. CSV needs nothing extra.
+Excel needs openpyxl (pip3 install openpyxl), Google Sheets needs gspread (pip3 install gspread). CSV needs nothing.
 """
-import csv, re, sys, pathlib
+import re, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "collectors"))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import common
 from common import norm_co, norm_title
 from find_boards import words
+import tracker_io
+from tracker_io import HYPERLINK
 
-HYPERLINK = re.compile(r'=HYPERLINK\(\s*"([^"]*)"\s*[,;]\s*"(.*)"\s*\)\s*$', re.I)
-
-def read_rows(path, sheet, cols):
+def read_rows(tracker, cols):
     """Yields dicts keyed by our field names. Finds the header row in the first 10 rows."""
-    if path.suffix.lower() == ".csv":
-        with open(path, newline="", encoding="utf-8-sig") as f:
-            grid = [[(v, None) for v in row] for row in csv.reader(f)]
-    else:
-        import openpyxl
-        wb = openpyxl.load_workbook(path)
-        ws = wb[sheet] if sheet else wb.worksheets[0]
-        grid = [[(c.value, c.hyperlink.target if c.hyperlink else None) for c in row] for row in ws.iter_rows()]
+    grid = tracker.grid()
     wanted = {k: v.strip().lower() for k, v in cols.items()}
     for hi, row in enumerate(grid[:10]):
         names = [str(v or "").strip().lower() for v, _ in row]
@@ -52,11 +47,12 @@ def guess_slug(name):
     return "".join(x for x in words(re.sub(r"\(.*?\)", " ", name)) if x != "and")
 
 def main():
-    if len(sys.argv) < 2: sys.exit(__doc__)
-    path = pathlib.Path(sys.argv[1]).expanduser()
+    if any(a in ("-h", "--help") for a in sys.argv[1:]): sys.exit(__doc__)
     tmap = common.load("tracker_map.json")
+    tracker = tracker_io.open_tracker(sys.argv[1] if len(sys.argv) > 1 else None, tmap)
+    print(f"Reading your tracker ({tracker.kind}): {tracker.label}")
     skip = {s.lower() for s in tmap.get("skip_statuses", [])}
-    jobs = [r for r in read_rows(path, tmap.get("sheet"), tmap["columns"]) if r.get("status", "").lower() not in skip]
+    jobs = [r for r in read_rows(tracker, tmap["columns"]) if r.get("status", "").lower() not in skip]
     common.save("seen.json", {"_readme": "Jobs already in your tracker, so they are not shown again. Rebuilt by tools/import_tracker.py.",
                               "jobs": [{"company": j["company"], "title": j["title"], "status": j.get("status"),
                                         "url": j.get("link") or None} for j in jobs]})

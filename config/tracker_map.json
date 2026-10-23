@@ -1,5 +1,9 @@
 {
- "_readme": "Tells tools/import_tracker.py which columns in YOUR tracker hold each field. Values are header names as they appear in your file. The defaults match templates/job_tracker_template.xlsx.",
+ "_readme": "Where your tracker is and which columns hold each field. setup_wizard.py --tracker fills this in. source: type excel (path), csv (path) or google_sheets (url, credentials). sheet: tab name, null for the first tab. columns: header names as they appear in your tracker; the defaults match templates/job_tracker_template.xlsx.",
+ "source": {
+  "type": "excel",
+  "path": "tracker/my_job_tracker.xlsx"
+ },
  "sheet": null,
  "columns": {
   "company": "Company",
