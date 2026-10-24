@@ -148,6 +148,7 @@ The pipeline searches only companies on your list. Add them any of these ways:
 python3 tools/import_tracker.py                                 # every company in your tracker
 python3 tools/add_companies.py "Acme Corp" "Globex"              # specific companies
 python3 tools/add_companies.py --file my_companies.txt           # one name per line
+python3 tools/add_companies.py --file list.csv --source "Built In NYC" --dry-run   # a list from a job site
 ```
 
 `import_tracker.py` also records every job already in your tracker so they never show up as new.
@@ -173,6 +174,25 @@ already filled in. The setup wizard offers this when your list is short.
 - Progress is saved in `data/discovery/`, which isn't uploaded to git.
 - It only finds companies on Greenhouse, Lever and Ashby. Companies on Workday and other systems still come from
   your tracker or `add_companies.py`.
+
+**Find companies on any job site, with an AI assistant.** Sites like Built In, Wellfound, Indeed, Dice,
+ZipRecruiter or your city's tech job board aren't searched by the pipeline, but they're a good source of
+employers to add. Ask your assistant (Claude, ChatGPT or another) to "collect companies from <site> for my
+titles". AGENTS.md walks it through the process:
+
+1. It searches the site for your titles and locations, using a browser, a connector, or results pages you paste in.
+2. It keeps employers with a recent, relevant listing you could take, and drops recruiters, staffing firms,
+   industries you avoid and companies already on your list.
+3. It shows you the list. Nothing is added until you approve it.
+4. It saves the approved companies to a CSV and runs `add_companies.py --file ... --source "<site>"` (dry run
+   first). When the site shows apply links that go to Greenhouse, Lever, Ashby, SmartRecruiters, Workable or
+   Workday, the company's job board is filled in directly.
+5. You run `find_boards.py` and `run_daily.py` as usual.
+
+You can do it without an assistant too: put the companies in a text file (one per line) or a CSV with a
+`company` column (and optionally a `link` column with an apply link), then run the `add_companies.py` command
+above. Sites differ in how much they show without signing in, and some show a security check when browsed
+quickly; the assistant is told to go slowly and stop at any check rather than get around it.
 
 **Large employers on Workday (optional):** open any of their job postings. If the address contains `myworkdayjobs.com`, add the company to `config/workday_seeds.json`:
 
@@ -286,7 +306,7 @@ scoring/
 tools/
   migrate_tracker.py    Copies an existing tracker (any layout) into the template
   import_tracker.py     Reads your tracker: skip tracked jobs, add new companies
-  add_companies.py      Adds companies by name
+  add_companies.py      Adds companies by name or from a list collected on a job site
   discover_companies.py Finds Greenhouse, Lever and Ashby companies with jobs matching your titles
   add_to_tracker.py     Adds every qualifying job to your Excel or Google Sheets tracker (Status New)
   tracker_io.py         Reads and writes Excel, CSV and Google Sheets trackers
@@ -307,7 +327,7 @@ data/jobs.db            Your collected jobs (local only, never uploaded)
 - Only companies on your list are searched. `tools/discover_companies.py` fills the list with Greenhouse, Lever and Ashby companies that have matching jobs.
 - Board names are guessed from company names. Unusual names may need a manual entry in `companies.json` (`"ats": "greenhouse", "token": "boardname"`).
 - Salary is read from the posting text when the board has no pay field. Ranges that combine several locations or levels should be checked.
-- LinkedIn, Indeed, Built In and similar sites are not searched.
+- LinkedIn, Indeed, Built In and similar sites are not searched directly. You can use them to find companies to add (Step 4, "Find companies on any job site").
 
 ## Troubleshooting
 

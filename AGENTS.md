@@ -23,7 +23,8 @@ you ─> review pass: read their Notes, ask questions, suggest profile.json chan
 ```
 
 It does not search LinkedIn, Indeed or other job sites. Jobs found there can be handled by hand (see
-"Jobs they find elsewhere").
+"Jobs they find elsewhere"), and you can use those sites to find more companies for the list (see "Finding
+companies on other job sites").
 
 ## What you can do depends on your tool
 
@@ -74,7 +75,8 @@ Go one step at a time and confirm before moving on. Keep questions short.
    passing their rules. The first run can take an hour or more and is safe to stop and restart; `--dry-run`
    reports without changing anything. Lever and Ashby names come from the board name, so glance at those.
    Also ask for 10 to 30 companies they'd love to work for that aren't in their tracker yet:
-   `python3 tools/add_companies.py "Company A" "Company B"`.
+   `python3 tools/add_companies.py "Company A" "Company B"`. For employers beyond Greenhouse, Lever and Ashby,
+   offer to collect companies from a job site they use (see "Finding companies on other job sites").
 6. **Large employers on Workday (optional).** For big companies, ask them to open one of the company's job
    postings. If the address contains `myworkdayjobs.com`, add it to `config/workday_seeds.json` as
    `"Company": "https://tenant.wd5.myworkdayjobs.com/SiteName"` (up to the site name, without `/en-US` or
@@ -144,6 +146,73 @@ Status, Resume Match, Fit Score, Notes, Assistant Notes` (sheet "Applications", 
   and filled map to Rejected; wishlist, bookmarked and to-apply map to Saved; submitted and in review map to
   Applied. A blank status becomes Applied if there's an application date, otherwise New.
 
+## Finding companies on other job sites (AI-assisted)
+
+The pipeline only searches companies on its list. Job sites the pipeline doesn't read (Built In, Wellfound,
+Indeed, Dice, ZipRecruiter, Workable's job search, a city or industry job board, anything the person names) are
+still a good way to find **employers** to add. Offer this when their list is short, when daily reports turn up
+few new jobs, or whenever they ask. Use the site to collect company names, then let the pipeline search
+those companies' own job boards every day.
+
+1. **Pick the site and the scope with them.** Which site, which searches (their `titles` from `profile.json`,
+   plus close variants worth a look), and which locations (remote in their country, their home metro).
+2. **Collect employers.** Use whatever access you have, in this order of preference:
+   - A connector or API for that site (some assistants have Indeed, Dice or ZipRecruiter tools).
+   - A browser you control: open the site's search pages and read the results. Many sites embed the listing
+     data in the page (for example a JSON block), which is faster and more accurate than reading the screen.
+   - No browser or tools: ask them to run the search and paste the results page text (or save the page) into
+     the chat, a page at a time, and extract the employers yourself.
+
+   For each listing keep the employer name, job title, location or work type, posting date and, if the site
+   shows it, the **apply link**. Apply links that go to Greenhouse, Lever, Ashby, SmartRecruiters, Workable or
+   Workday let `add_companies.py` fill in the job board directly, with no guessing.
+3. **Filter before you suggest anything.** Keep an employer only if at least one of its listings:
+   - has a title close to their target titles (not data engineer when they want analyst roles, and so on),
+   - is in a location their `accept` settings allow (drop in-office-only and other-country listings when they
+     want remote or home-metro hybrid),
+   - and was posted in the last six months or so (old listings often belong to companies no longer hiring).
+
+   Then drop recruiters, staffing firms and aggregators that hide the employer ("Jobgether", "via ...",
+   "confidential client"), companies in their `excluded_companies`, employers in an industry they avoid (check
+   the company, not just the title: a "Data Analyst" at a hospital system is still healthcare), junk listings
+   (unpaid, volunteer, crowd-work), and companies already in `config/companies.json`.
+4. **Show them the list before adding anything.** Give counts (listings read, employers found, already on their
+   list, skipped and why) and the new employers grouped so it's easy to skim, with any group they might not
+   want called out (for example insurers hiring "Product Analysts" for policy configuration). Add only what
+   they approve.
+5. **Save and add.** Write the approved employers to a file outside the repo's tracked files (for example
+   `data/candidates_<site>.csv`, since `data/` isn't committed) with a `company` column and, where you have one,
+   a `link` column. Then:
+
+   ```bash
+   python3 tools/add_companies.py --file data/candidates_<site>.csv --source "<Site name>" --dry-run
+   python3 tools/add_companies.py --file data/candidates_<site>.csv --source "<Site name>"
+   ```
+
+   The dry run shows what will be added, skipped (recruiters, excluded companies and industries, names already
+   listed) and filled in, plus names that look like duplicates of existing ones. `--source` saves the site on
+   each company as `discovered_via`.
+6. **Find their boards and collect:** `python3 collectors/find_boards.py`, then `python3 run_daily.py`, and go
+   through the report as usual. Large employers often use Workday, which can't be guessed from the name alone:
+   for the big names still without a board, add them to `config/workday_seeds.json` (with the address from one
+   of their postings, or `null` to let the finder guess) and run `python3 collectors/find_workday.py` before the
+   daily run. Companies whose boards still aren't found usually use a career site this project doesn't read
+   (iCIMS, Taleo, Oracle, SuccessFactors); say so rather than guessing.
+
+Be a good guest on other sites:
+
+- **Go slowly.** Fetch one results page every few seconds, not dozens at once, and stop after the pages you
+  need. Many sites rate-limit or show a security check when browsed quickly.
+- **Never solve CAPTCHAs or security checks, and never get around a block.** If a site shows one, stop, tell
+  the person, and let them clear it themselves in the browser if they want to continue (then go even slower),
+  try later, or skip that site.
+- **Don't sign in for them or handle passwords.** Many sites show enough without signing in. If a site needs an
+  account, they sign in themselves in the browser, or you work from what they paste.
+- **Expect lower yields from some sites.** Startup boards often take applications only through the site itself,
+  so those companies have no outside job board for the pipeline to search. Ten good companies from a site is a
+  fine result.
+- Follow the site's terms. If they forbid automated collection, use the copy-and-paste route above.
+
 ## Jobs they find elsewhere (LinkedIn, Indeed, referrals)
 
 Ask them to paste the description or save the page and share it. Check it against the tracker, score Fit
@@ -178,7 +247,7 @@ and run `find_boards.py`, so future postings there are found automatically.
 | `config/seen.json` | Jobs already in their tracker (built by `import_tracker.py`) |
 | `tools/migrate_tracker.py` | Copies an existing tracker into the template |
 | `tools/import_tracker.py` | Reads the tracker: fills `seen.json`, adds companies |
-| `tools/add_companies.py` | Adds companies by name |
+| `tools/add_companies.py` | Adds companies by name or from a .txt/.csv list (`--source`, `--dry-run`); fills in job boards from apply links |
 | `tools/discover_companies.py` | Finds Greenhouse, Lever and Ashby companies with jobs matching their criteria (Common Crawl index, then a live check) |
 | `tools/add_to_tracker.py` | Adds every qualifying job to an Excel or Google Sheets tracker (Status New), then updates `seen.json` |
 | `tools/tracker_io.py` | Reads and writes Excel, CSV and Google Sheets trackers |
@@ -192,7 +261,7 @@ and run `find_boards.py`, so future postings there are found automatically.
 ## Troubleshooting
 
 - **Few or no jobs:** check "Excluded, by reason" in the report. Too few companies on the list (run
-  `tools/discover_companies.py`), strict title
+  `tools/discover_companies.py`, or collect companies from a job site), strict title
   exclusions, or `accept` options set to `false` are the usual causes. `collect.py --debug` shows each decision.
 - **A company keeps showing "not found":** it may use a career site this project doesn't cover (iCIMS, Taleo,
   Oracle, SuccessFactors). Those are checked by hand.
