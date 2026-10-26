@@ -3,6 +3,13 @@
 Notable changes to auto-job-hunter, newest first. If you made your own copy from the template,
 compare this list with your copy to see what's new. Full history is on the Commits page on GitHub.
 
+## 1.8.1 (2026-10-26)
+
+### Fixed
+- **Remote jobs open to the US and Canada were dropped as "Outside the US".** A location like "Remote (United States | Canada)" or "Canada; United States" matched the foreign-place list and was excluded. A job now counts as outside the US only when it names a foreign place and no US place (a state, a major US city, your home area, or the country itself). Why: several well-paid remote roles open to US candidates were being excluded.
+- **Jobs whose location is just "United States" or "US" were dropped as onsite.** With no city given, the job board's own remote/hybrid/onsite label wins when it has one; otherwise the description decides (remote wording such as "#LIRemote" or "fully remote" makes it remote), and if neither says, the job is kept as remote and flagged "check location".
+- **"Latin America", "South America" and "Central America" now count as outside the US.** Before, "Remote - Latin America" could pass as a US remote job.
+
 ## 1.8.0 (2026-10-23)
 
 ### Added

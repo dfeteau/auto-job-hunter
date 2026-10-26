@@ -69,7 +69,7 @@ def workday_parts(url):
     return u.netloc, u.netloc.split(".")[0], segs[0]
 
 def workday(url, wanted, search_terms):
-    from common import NON_US
+    from common import is_non_us
     host, tenant, site = workday_parts(url)
     api = f"https://{host}/wday/cxs/{tenant}/{site}"
     found = {}
@@ -86,7 +86,7 @@ def workday(url, wanted, search_terms):
     for path, p in found.items():
         info = (get(f"{api}{path}") or {}).get("jobPostingInfo") or {}
         locs = [info.get("location") or p.get("locationsText") or ""] + list(info.get("additionalLocations") or [])
-        locs = [l for l in locs if l and not NON_US.search(l)] or locs  # keep US locations of multi-country jobs
+        locs = [l for l in locs if l and not is_non_us(l)] or locs  # keep US locations of multi-country jobs
         rt = str(info.get("remoteType") or "").lower()
         yield dict(title=info.get("title") or p.get("title", ""), loc="; ".join(l for l in locs if l),
                    url=info.get("externalUrl") or f"https://{host}/{site}{path}", plain=strip_html(info.get("jobDescription")),

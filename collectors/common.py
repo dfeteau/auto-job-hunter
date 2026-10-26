@@ -72,7 +72,7 @@ def salary(text):
 NON_US = re.compile(
     r"\b(canada|toronto|vancouver|montreal|ontario|british columbia|quebec|emea|europe|uk|united kingdom|london|"
     r"scotland|edinburgh|ireland|dublin|india|bengaluru|bangalore|hyderabad|pune|mumbai|apac|latam|mexico|brazil|"
-    r"sao paulo|argentina|buenos aires|colombia|bogota|chile|peru|uruguay|costa rica|germany|berlin|munich|france|paris|"
+    r"latin america|south america|central america|sao paulo|argentina|buenos aires|colombia|bogota|chile|peru|uruguay|costa rica|germany|berlin|munich|france|paris|"
     r"spain|madrid|barcelona|poland|warsaw|krakow|portugal|lisbon|netherlands|amsterdam|belgium|brussels|luxembourg|"
     r"switzerland|zurich|geneva|austria|vienna|czech|prague|hungary|budapest|greece|athens|croatia|estonia|latvia|"
     r"lithuania|israel|tel aviv|singapore|japan|tokyo|australia|sydney|new zealand|philippines|romania|serbia|bulgaria|"
@@ -83,6 +83,29 @@ US_TOK = re.compile(r"\b(us|usa|u\.s\.|united states|america)\b", re.I)
 US_STATE = re.compile(r",\s*(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|"
                       r"NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b")
 HOME = re.compile("|".join(PROFILE["location"]["home_metro_patterns"]) or r"$^", re.I)
+# A US place named anywhere in the location. "America" is left out so "Latin America" doesn't count as the US.
+US_PLACE = re.compile(r"\b(us|usa|u\.s\.a?\.?|united states|alabama|alaska|arizona|arkansas|california|colorado|connecticut|"
+    r"delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|"
+    r"minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|"
+    r"north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|"
+    r"virginia|washington|west virginia|wisconsin|wyoming|chicago|seattle|san francisco|boston|austin|denver|atlanta)\b", re.I)
+# Words allowed in a location that names only countries ("United States", "US", "Canada; United States").
+_COUNTRY_WORDS = re.compile(r"\b(remote|us|usa|u\.s\.a?\.?|united states( of america)?|canada|north america|or|and)\b", re.I)
+# Description says the job is remote (used when the location gives no city).
+REMOTE_TEXT = re.compile(r"#li-?remote|\bfully[- ]remote\b|\bremote[- ](first|eligible)\b|\bremote (role|position|opportunity|job)\b|"
+    r"\b(role|position|job) is (fully )?remote\b|\bwork (remotely )?from (home|anywhere)\b|\bremote (with)?in the (us|u\.s\.|united states)\b", re.I)
+
+def is_non_us(loc):
+    """Outside the US only when a foreign place is named and no US place is.
+    "Remote (United States | Canada)" is open to US candidates, so it is not outside the US."""
+    l = loc or ""
+    return bool(NON_US.search(l)) and not (US_PLACE.search(l) or US_STATE.search(l) or HOME.search(l))
+
+def country_only(loc):
+    """True when the location names the US (and maybe other countries) but no city or state."""
+    l = loc or ""
+    return bool(re.search(r"\b(us|usa|u\.s\.a?\.?|united states)\b", l, re.I)) and \
+        not re.sub(r"[\W_]+", "", _COUNTRY_WORDS.sub("", l))
 ONSITE = re.compile(r"\b(on-?site|in[- ]office|in the office|5 days a week|five days a week)\b", re.I)
 CLEARANCE = re.compile(r"clearance\s*required\s*:?\s*(?!none|n/a|no\b)(yes|secret|top|ts|public|active|dod|\w)"
     r"|\b(active|current|existing|must (?:have|hold|possess)|ability to obtain|able to obtain|eligible (?:for|to obtain))\b[^.]{0,50}"
@@ -96,13 +119,18 @@ def classify(loc, plain="", workplace=""):
     """Returns remote_us, remote_unknown, us_unspecified, hybrid_home, home_unclear, onsite_home, hybrid_other, onsite_other or non_us.
     workplace is the source's own remote/hybrid label when it has one."""
     l = (loc or "").strip(); ll = l.lower(); wt = (workplace or "").lower()
-    if NON_US.search(l): return "non_us"
+    if is_non_us(l): return "non_us"
     if "remote" in ll or wt == "remote":
         if US_TOK.search(l) or US_STATE.search(l) or ll in ("", "remote", "us remote", "remote - us") or HOME.search(l):
             return "remote_us"
         return "remote_unknown"
     if re.search(r"any location|anywhere", l, re.I): return "us_unspecified"
     hybrid = "hybrid" in ll or wt == "hybrid" or "hybrid" in (plain or "")[:3000].lower()
+    if country_only(l):   # no city given: the source's own label wins, then the description; else flagged "check location"
+        if wt in ("onsite", "on-site"): return "onsite_other"
+        if wt == "hybrid": return "hybrid_other"
+        if REMOTE_TEXT.search(plain or ""): return "remote_us"
+        return "hybrid_other" if hybrid else "us_unspecified"
     if HOME.search(l):
         if hybrid: return "hybrid_home"
         if wt in ("onsite", "on-site") or ONSITE.search(l) or ONSITE.search((plain or "")[:3000]): return "onsite_home"
