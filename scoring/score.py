@@ -8,7 +8,7 @@ evaluate() is also used by run_daily.py to build the daily report.
 import sys, pathlib, datetime
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "collectors"))
 import common
-from common import PROFILE, LOC_GROUP, NON_US
+from common import PROFILE, LOC_GROUP, is_non_us, recheck_remote
 
 S, L, SC = PROFILE["salary"], PROFILE["location"], PROFILE["scoring"]
 TIERS = sorted(S["tiers_by_min"], key=lambda t: -t["min"])
@@ -34,7 +34,8 @@ def evaluate(con, include_all=False, today_only=False):
         def drop(reason): excluded.append((reason, co, ti, loc or ""))
         if flt.tracked(co, ti): drop("Already in tracker"); continue
         if flt.skip_company({"company": co}): drop("Excluded company"); continue
-        if NON_US.search(loc or ""): drop("Outside the US"); continue
+        if is_non_us(loc or ""): drop("Outside the US"); continue
+        rt = recheck_remote(rt, loc, desc)   # stored jobs get the current location checks too
         reason = flt.why_not(co, ti, loc, rt, desc)
         if reason: drop(reason); continue
         if mx is not None and mx < S["floor_high_end"]: drop(f"Pay tops out under ${S['floor_high_end']:,}"); continue

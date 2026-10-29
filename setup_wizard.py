@@ -317,6 +317,7 @@ def main():
                    "excluded_industry_words": industry_words, "excluded_companies": companies,
                    "exclude_clearance_required": not has_clearance},
         "location": {"country": "US", "home_metro_name": city or st, "home_metro_patterns": patterns,
+                     "home_state": STATES[st].title() if st in STATES else None,
                      "accept": accept, "home_min_salary": home_min},
         "salary": {"floor_high_end": floor, "tiers_by_min": tiers, "unknown_points": 0},
         "scoring": {"location_points": loc_points, "gate_min": gate,

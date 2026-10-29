@@ -3,6 +3,18 @@
 Notable changes to auto-job-hunter, newest first. If you made your own copy from the template,
 compare this list with your copy to see what's new. Full history is on the Commits page on GitHub.
 
+## 1.9.0 (2026-10-29)
+
+### Added
+- **`home_state` in `config/profile.json` (optional).** Remote jobs that are open only in certain states are dropped when your state isn't one of them. Two cases are caught: the posting lists the states ("candidates must be based in California, Oregon, Washington, Utah, or Texas"; "eligible applicants must reside in one of the following states: ..."), or the location lists separate remote entries by state ("Remote Flex - North Carolina; Remote Flex - Texas; ..."). The report reason is "Remote, but not open to your state". The setup wizard fills it in from the state you enter. Leave it out to keep these jobs. Why: remote jobs that can't hire in your state were reaching the shortlist.
+
+### Fixed
+- **Jobs already in your tracker came back when the company name was written differently.** The title still has to match exactly, but the company now also matches on a name in parentheses ("Cambium Learning Group (Lexia)" and "Lexia Learning"), a longer form of the same name ("Kraken" and "Kraken Digital Asset Exchange"), or initials ("F&G" and "Fidelity & Guaranty Life Insurance Company").
+- **Lever postings were read without their closing sections.** Pay and state lists often sit in the requirement lists or the closing paragraph, which were skipped. The whole posting is read now.
+- **Jobs outside the US got through.** Remote jobs whose description is mostly in another alphabet (for example Ukrainian) now count as outside the US, and about 50 more foreign cities and regions were added (Manila, Kyiv, Latin America and others). A location ending in a US state code ("Dublin, CA", "Athens, GA") always counts as US.
+- **Excluded industry words matched inside longer words.** "hospital" matched "Hospitality", so a hospitality company was dropped as healthcare. Pet and animal health ("pet health brands") no longer counts as "health" in the employer description.
+- **Federal suitability checks counted as no clearance.** "DHS suitability" and similar federal background checks are Public Trust-type checks, so these jobs are now dropped with the other clearance jobs (when `exclude_clearance_required` is on).
+
 ## 1.8.0 (2026-10-23)
 
 ### Added

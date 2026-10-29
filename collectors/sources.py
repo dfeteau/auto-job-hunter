@@ -13,12 +13,18 @@ def greenhouse(token, wanted):
 def _yearly(v, interval):
     return int(v) if v and "year" in str(interval or "").lower() else None
 
+def lever_text(j):
+    """The whole posting: description, requirement lists and closing section (which often holds pay and
+    the states a remote job is open to)."""
+    lists = " ".join(f'{l.get("text", "")}: {strip_html(l.get("content", ""))}' for l in j.get("lists") or [])
+    return " ".join(x for x in (j.get("descriptionPlain"), lists, j.get("additionalPlain")) if x)
+
 def lever(token, wanted):
     for j in get(f"https://api.lever.co/v0/postings/{token}?mode=json") or []:
         if not wanted(j.get("text", "")): continue
         sr = j.get("salaryRange") or {}
         yield dict(title=j.get("text", ""), loc=(j.get("categories") or {}).get("location") or "", url=j.get("hostedUrl"),
-                   plain=j.get("descriptionPlain") or "", wt=(j.get("workplaceType") or "").lower(),
+                   plain=lever_text(j), wt=(j.get("workplaceType") or "").lower(),
                    smin=_yearly(sr.get("min"), sr.get("interval")), smax=_yearly(sr.get("max"), sr.get("interval")))
 
 def ashby(token, wanted):
@@ -69,7 +75,7 @@ def workday_parts(url):
     return u.netloc, u.netloc.split(".")[0], segs[0]
 
 def workday(url, wanted, search_terms):
-    from common import NON_US
+    from common import is_non_us
     host, tenant, site = workday_parts(url)
     api = f"https://{host}/wday/cxs/{tenant}/{site}"
     found = {}
@@ -86,7 +92,7 @@ def workday(url, wanted, search_terms):
     for path, p in found.items():
         info = (get(f"{api}{path}") or {}).get("jobPostingInfo") or {}
         locs = [info.get("location") or p.get("locationsText") or ""] + list(info.get("additionalLocations") or [])
-        locs = [l for l in locs if l and not NON_US.search(l)] or locs  # keep US locations of multi-country jobs
+        locs = [l for l in locs if l and not is_non_us(l)] or locs  # keep US locations of multi-country jobs
         rt = str(info.get("remoteType") or "").lower()
         yield dict(title=info.get("title") or p.get("title", ""), loc="; ".join(l for l in locs if l),
                    url=info.get("externalUrl") or f"https://{host}/{site}{path}", plain=strip_html(info.get("jobDescription")),

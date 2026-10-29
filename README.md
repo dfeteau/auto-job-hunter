@@ -53,6 +53,7 @@ Industry shortcuts you can type: healthcare, pharma, defense, government, gambli
 | | `exclude_clearance_required` | `true` skips postings that require a security clearance ("Clearance Required: None" is fine). Set `false` if you hold one. |
 | | `excluded_companies` | Companies never to show. |
 | `location` | `home_metro_name`, `home_metro_patterns` | Your metro area and the words that identify it in a job location (city names, state, `, co\\b` for ", CO"). |
+| | `home_state` | Optional. Your state, spelled out (`"Colorado"`). Remote jobs that are open only in a list of states that leaves yours out ("candidates must be based in California, Oregon or Texas") are dropped. Leave it out or set `null` to keep them.
 | | `accept` | Which job types to keep: `remote`, `hybrid_home`, `onsite_home` (in your metro), `hybrid_other`, `onsite_other` (elsewhere). `true` keeps, `false` drops. |
 | | `home_min_salary` | Optional. Minimum salary for hybrid or onsite jobs in your metro (worth the commute). `null` for none. |
 | | (note) | Home-area jobs that don't state remote, hybrid or onsite count as hybrid and are flagged `check if hybrid`. Jobs that say onsite count as onsite. |

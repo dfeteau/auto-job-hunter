@@ -37,6 +37,7 @@
       "boulder",
       "lakewood"
     ],
+    "home_state": "Colorado",
     "accept": {
       "remote": true,
       "hybrid_home": true,
